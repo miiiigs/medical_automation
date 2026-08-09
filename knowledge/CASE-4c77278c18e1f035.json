@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 2,
+  "knowledgeId": "CASE-4c77278c18e1f035",
+  "timestamp": "2026-08-09T10:11:11.236Z",
+  "executionId": "72",
+  "classification": {
+    "isPregnancy": false,
+    "isGyne": true,
+    "isPostpartum": false,
+    "evidence": [
+      "Gynecologic diagnosis/condition terminology found"
+    ]
+  },
+  "extracted": {
+    "birthDatePresent": true,
+    "admissionDatePresent": true,
+    "roomPresent": false,
+    "weightPresent": false,
+    "heightPresent": true,
+    "obscoreG": 1,
+    "obscoreP": 1,
+    "obscoreFT": 1,
+    "obscorePr": 0,
+    "obscoreAb": 0,
+    "obscoreLB": 1
+  },
+  "mapped": {
+    "gynecologicalDiagnosis": [
+      {
+        "categoryId": 12,
+        "conditionId": 114,
+        "gyneStage": 6,
+        "others": null,
+        "othersField": null
+      }
+    ]
+  },
+  "unresolved": [
+    {
+      "sourceKey": "abnormalUterineBleeding",
+      "sourceLabel": "Abnormal uterine bleeding",
+      "reason": "No exact POGS gynecologicalDiagnosis reference confirmed"
+    },
+    {
+      "sourceKey": "endometrialThickening",
+      "sourceLabel": "Endometrial thickening",
+      "reason": "POGS has Endometrial hyperplasia, unspecified, but source only says endometrial thickening"
+    },
+    {
+      "sourceKey": "anemia",
+      "sourceLabel": "Anemia",
+      "reason": "Not a gynecologicalDiagnosis mapping"
+    },
+    {
+      "sourceKey": "acuteBloodLoss",
+      "sourceLabel": "Acute blood loss",
+      "reason": "Not a gynecologicalDiagnosis mapping"
+    },
+    {
+      "sourceKey": "obesity",
+      "sourceLabel": "Obesity",
+      "reason": "Not a gynecologicalDiagnosis mapping"
+    }
+  ],
+  "ignored": [
+    {
+      "sourceKey": "bloodTransfusion",
+      "sourceLabel": "Status post blood transfusion",
+      "reason": "Treatment/procedure, not gynecologicalDiagnosis"
+    },
+    {
+      "sourceKey": "endometrialSampling",
+      "sourceLabel": "Status post ultrasound guided endometrial sampling",
+      "reason": "Procedure, not gynecologicalDiagnosis"
+    },
+    {
+      "sourceKey": "dmpa",
+      "sourceLabel": "Status post DMPA injection",
+      "reason": "Medication/intervention, not gynecologicalDiagnosis"
+    }
+  ],
+  "mappingCoverage": {
+    "recognizedTerms": 9,
+    "mappedTerms": 1,
+    "unresolvedTerms": 5,
+    "ignoredTerms": 3
+  },
+  "mappingStatus": {
+    "mappingComplete": false,
+    "needsClinicalMappingReview": true
+  },
+  "ruleEvaluation": [
+    {
+      "field": "gynecologicalDiagnosis",
+      "visible": true,
+      "required": true,
+      "applicable": true,
+      "reason": "isGyne = true",
+      "satisfied": true
+    },
+    {
+      "field": "pregnancySection",
+      "visible": false,
+      "required": false,
+      "applicable": false,
+      "reason": "isPregnancy = false",
+      "satisfied": true
+    },
+    {
+      "field": "postpartumSection",
+      "visible": false,
+      "required": false,
+      "applicable": false,
+      "reason": "isPostpartum = false",
+      "satisfied": true
+    },
+    {
+      "field": "obstetricScore",
+      "visible": null,
+      "required": null,
+      "applicable": true,
+      "reason": "OB score data was extracted from source",
+      "satisfied": true
+    },
+    {
+      "field": "weight",
+      "visible": true,
+      "required": false,
+      "applicable": true,
+      "reason": "General patient measurement",
+      "satisfied": false
+    },
+    {
+      "field": "height",
+      "visible": true,
+      "required": false,
+      "applicable": true,
+      "reason": "General patient measurement",
+      "satisfied": true
+    }
+  ],
+  "ruleStatus": {
+    "evaluatedRules": 6,
+    "unsatisfiedRequiredRules": [],
+    "needsRuleReview": false
+  },
+  "validation": {
+    "readyForPOGS": true,
+    "issues": [],
+    "warnings": [
+      "Weight not extracted or requires review",
+      "Unresolved clinical term: Abnormal uterine bleeding",
+      "Unresolved clinical term: Endometrial thickening",
+      "Unresolved clinical term: Anemia",
+      "Unresolved clinical term: Acute blood loss",
+      "Unresolved clinical term: Obesity"
+    ]
+  },
+  "discovery": {
+    "unknownTopLevelFields": [
+      "knowledgeId"
+    ],
+    "needsMappingReview": true,
+    "needsRuleReview": true
+  }
+}
