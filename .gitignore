@@ -1,2 +1,16 @@
+# Environment / secrets
 .env
 *.env
+secrets/
+
+# Patient-derived local data
+data/
+knowledge/
+logs/
+
+# Backups
+backups/
+
+# Optional local exports / debug artifacts
+*.jsonl
+*.log

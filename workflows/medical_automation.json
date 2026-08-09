@@ -1,0 +1,1124 @@
+{
+  "name": "medical_automation",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        224,
+        -1168
+      ],
+      "id": "32572b83-5a3b-4740-9edd-9aec2b3f62e6",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "15r_HPrVzCHuPGxCrJNhDj_kFjepHKwRAdPvHovhnXIk",
+          "mode": "list",
+          "cachedResultName": "PNSS ENCODING",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15r_HPrVzCHuPGxCrJNhDj_kFjepHKwRAdPvHovhnXIk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1729947860,
+          "mode": "list",
+          "cachedResultName": "July 2026",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15r_HPrVzCHuPGxCrJNhDj_kFjepHKwRAdPvHovhnXIk/edit#gid=1729947860"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A231:I232"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        -1728
+      ],
+      "id": "517e238c-181a-4e50-814d-c1762ebe845f",
+      "name": "Get row(s) in sheet",
+      "notesInFlow": false,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "w8CHG10kDhGNfouo",
+          "name": "medical_automation Google OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows =\n  $json.sheets?.[0]\n    ?.data?.[0]\n    ?.rowData ?? [];\n\nconst results = [];\n\nfor (let i = 0; i < rows.length; i++) {\n  const cell =\n    rows[i]?.values?.[0];\n\n  const uri =\n    cell\n      ?.chipRuns?.[0]\n      ?.chip\n      ?.richLinkProperties\n      ?.uri;\n\n  if (!uri) continue;\n\n  const match =\n    uri.match(/\\/document\\/d\\/([^/]+)/);\n\n  if (!match) continue;\n\n  results.push({\n    json: {\n      sourceRowOffset: i,\n      documentUrl: uri,\n      documentId: match[1]\n    }\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -1408
+      ],
+      "id": "76824f54-8211-45aa-8a04-271a1f8e9194",
+      "name": "Extract Google Docs Link"
+    },
+    {
+      "parameters": {
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/15r_HPrVzCHuPGxCrJNhDj_kFjepHKwRAdPvHovhnXIk?includeGridData=true&ranges=July%202026!H232:H242",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        -1408
+      ],
+      "id": "f6a73c89-e38f-41ca-b88e-b8ed4a9bd572",
+      "name": "Extract Row Data",
+      "retryOnFail": false,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "w8CHG10kDhGNfouo",
+          "name": "medical_automation Google OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const text = $json.documentText || '';\n\nfunction clean(value) {\n  return (value || '')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfunction sectionBetween(startPattern, endPattern) {\n  const start = text.search(startPattern);\n\n  if (start === -1) {\n    return '';\n  }\n\n  const afterStart = text.slice(start);\n  const end = afterStart.search(endPattern);\n\n  if (end === -1) {\n    return clean(afterStart);\n  }\n\n  return clean(\n    afterStart.slice(0, end)\n  );\n}\n\n\n// --------------------------------------------------\n// Flexible date extraction\n// Supports:\n// M/D/YYYY\n// MM/DD/YYYY\n// M-D-YYYY\n// MM-DD-YYYY\n//\n// Returns normalized MM/DD/YYYY\n// --------------------------------------------------\n\nfunction findDateNearLabel(\n  labelPattern,\n  maxChars = 180\n) {\n  const labelMatch =\n    text.match(labelPattern);\n\n  if (\n    !labelMatch ||\n    labelMatch.index === undefined\n  ) {\n    return null;\n  }\n\n  const nearby =\n    text.slice(\n      labelMatch.index,\n      labelMatch.index + maxChars\n    );\n\n  const dateMatch =\n    nearby.match(\n      /\\b(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{4})\\b/\n    );\n\n  if (!dateMatch) {\n    return null;\n  }\n\n  const month =\n    dateMatch[1].padStart(2, '0');\n\n  const day =\n    dateMatch[2].padStart(2, '0');\n\n  const year =\n    dateMatch[3];\n\n  return `${month}/${day}/${year}`;\n}\n\n\n// --------------------------------------------------\n// Patient demographics\n// --------------------------------------------------\n\nconst nameMatch =\n  text.match(\n    /Name\\s*\\|\\s*:\\s*\\|\\s*([^|\\n]+)/i\n  );\n\nconst hospitalMatch =\n  text.match(\n    /Hospital Number\\s*\\|\\s*:\\s*\\|\\s*([0-9]+)/i\n  );\n\nconst addressMatch =\n  text.match(\n    /Address\\s*\\|\\s*:\\s*\\|\\s*([^|]+?)\\s*\\|\\s*(?:Birthday|Birthdate|Birth\\s*Date|Date\\s+of\\s+Birth|DOB)/i\n  );\n\n\n// --------------------------------------------------\n// Birth date\n//\n// Supports common labels:\n// Birthday\n// Birthdate\n// Birth Date\n// Date of Birth\n// DOB\n// --------------------------------------------------\n\nconst birthDate =\n  findDateNearLabel(\n    /\\b(?:Birthday|Birthdate|Birth\\s*Date|Date\\s+of\\s+Birth|DOB)\\b/i\n  );\n\n\n// --------------------------------------------------\n// Age / Sex\n//\n// Independent from birth-date extraction so a\n// layout difference does not cause all three fields\n// to fail together.\n//\n// Example:\n// Birthdate | 07/01/1990 | 36 / F\n// --------------------------------------------------\n\nconst ageSexMatch =\n  text.match(\n    /\\b(?:Birthday|Birthdate|Birth\\s*Date|Date\\s+of\\s+Birth|DOB)\\b[\\s\\S]{0,180}?\\b(\\d{1,3})\\s*\\/\\s*([MF])\\b/i\n  );\n\n\n// --------------------------------------------------\n// Admission / discharge dates\n// --------------------------------------------------\n\nconst admissionDate =\n  findDateNearLabel(\n    /Date\\s+of\\s+Admission/i\n  );\n\nconst dischargeDate =\n  findDateNearLabel(\n    /Date\\s+of\\s+Discharge/i\n  );\n\n\n// --------------------------------------------------\n// Admission time\n// --------------------------------------------------\n\nconst admissionTimeMatch =\n  text.match(\n    /Time\\s+of\\s+Admission[\\s|:]*([0-9]{1,2}(?::[0-9]{2})?\\s*(?:AM|PM|am|pm)?)/i\n  );\n\n\n// --------------------------------------------------\n// Obstetric score\n//\n// Example:\n// G4 P3 (3-0-0-3)\n// --------------------------------------------------\n\nconst obIndexMatch =\n  text.match(\n    /\\bG(\\d+)\\s*P(\\d+)\\s*\\((\\d+)-(\\d+)-(\\d+)-(\\d+)\\)/i\n  );\n\n\n// --------------------------------------------------\n// Medical history\n// --------------------------------------------------\n\nconst hasChronicHypertension =\n  /\\(\\+\\)\\s*Chronic hypertension/i\n    .test(text);\n\nconst diabetesNegative =\n  /Diabetes mellitus\\s*\\|\\s*\\(-\\)/i\n    .test(text);\n\nconst asthmaNegative =\n  /Bronchial asthma\\s*\\|\\s*\\(-\\)/i\n    .test(text);\n\nconst thyroidNegative =\n  /Thyroid disease\\s*\\|\\s*\\(-\\)/i\n    .test(text);\n\n\n// --------------------------------------------------\n// Vitals\n// --------------------------------------------------\n\nconst bpMatch =\n  text.match(\n    /BP:\\s*([0-9]+\\/[0-9]+)\\s*mmHg/i\n  );\n\nconst hrMatch =\n  text.match(\n    /HR:\\s*([0-9]+)\\s*bpm/i\n  );\n\nconst rrMatch =\n  text.match(\n    /RR:\\s*([0-9]+)\\s*cpm/i\n  );\n\nconst o2Match =\n  text.match(\n    /O2 Sat:\\s*([0-9]+)%/i\n  );\n\nconst tempMatch =\n  text.match(\n    /Temp:\\s*([0-9.]+)°?C/i\n  );\n\n\n// --------------------------------------------------\n// Measurements\n// --------------------------------------------------\n\nconst weightMatch =\n  text.match(\n    /Weight:\\s*([0-9]+(?:\\.[0-9]+)?)\\s*kg/i\n  );\n\nconst heightMatch =\n  text.match(\n    /Height:\\s*([0-9]+(?:\\.[0-9]+)?)\\s*cm/i\n  );\n\n\n// --------------------------------------------------\n// Output\n// --------------------------------------------------\n\nreturn {\n  json: {\n\n    runContext:\n      $json.runContext ?? {\n        mode: 'LIVE',\n        rawCaseId: null\n      },\n\n    sourceTitle:\n      $json.title ?? null,\n\n    patient: {\n\n      name:\n        clean(\n          nameMatch?.[1]\n        ),\n\n      hospitalNumber:\n        clean(\n          hospitalMatch?.[1]\n        ),\n\n      address:\n        clean(\n          addressMatch?.[1]\n        ),\n\n      birthDate,\n\n      age:\n        ageSexMatch\n          ? Number(\n              ageSexMatch[1]\n            )\n          : null,\n\n      sex:\n        ageSexMatch?.[2]\n          ?.toUpperCase() ??\n        null\n    },\n\n\n    admission: {\n\n      date:\n        admissionDate,\n\n      time:\n        clean(\n          admissionTimeMatch?.[1]\n        ) || null,\n\n      dischargeDate\n    },\n\n\n    obstetric: {\n\n      gravida:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[1]\n            )\n          : null,\n\n      para:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[2]\n            )\n          : null,\n\n      fullTerm:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[3]\n            )\n          : null,\n\n      preterm:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[4]\n            )\n          : null,\n\n      abortion:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[5]\n            )\n          : null,\n\n      living:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[6]\n            )\n          : null\n    },\n\n\n    medicalHistory: {\n\n      chronicHypertension:\n        hasChronicHypertension,\n\n      diabetesMellitus:\n        diabetesNegative\n          ? false\n          : null,\n\n      bronchialAsthma:\n        asthmaNegative\n          ? false\n          : null,\n\n      thyroidDisease:\n        thyroidNegative\n          ? false\n          : null\n    },\n\n\n    vitals: {\n\n      bloodPressure:\n        bpMatch?.[1] ??\n        null,\n\n      heartRate:\n        hrMatch\n          ? Number(\n              hrMatch[1]\n            )\n          : null,\n\n      respiratoryRate:\n        rrMatch\n          ? Number(\n              rrMatch[1]\n            )\n          : null,\n\n      oxygenSaturation:\n        o2Match\n          ? Number(\n              o2Match[1]\n            )\n          : null,\n\n      temperatureC:\n        tempMatch\n          ? Number(\n              tempMatch[1]\n            )\n          : null\n    },\n\n\n    measurements: {\n\n      weightKg:\n        weightMatch\n          ? Number(\n              weightMatch[1]\n            )\n          : null,\n\n      heightCm:\n        heightMatch\n          ? Number(\n              heightMatch[1]\n            )\n          : null\n    },\n\n\n    sections: {\n\n      reasonForAdmission:\n        sectionBetween(\n          /REASON FOR ADMISSION:/i,\n          /HISTORY OF PRESENT ILLNESS/i\n        ),\n\n      historyOfPresentIllness:\n        sectionBetween(\n          /HISTORY OF PRESENT ILLNESS/i,\n          /Pertinent Past Medical History:/i\n        ),\n\n      finalDiagnosis:\n        sectionBetween(\n          /Final Diagnosis/i,\n          /Physicians-in-Charge/i\n        ),\n\n      courseInWard:\n        sectionBetween(\n          /COURSE IN THE WARD/i,\n          /SURGICAL PROCEDURE/i\n        )\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -1216
+      ],
+      "id": "083ab847-cc3e-4c56-bd87-d0e37d7cee6a",
+      "name": "Parse Clinical Sections"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const src = $json;\n\nfunction toISODate(mmddyyyy) {\n  if (!mmddyyyy) return null;\n\n  const match = String(mmddyyyy).match(\n    /^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/\n  );\n\n  if (!match) return null;\n\n  return `${match[3]}-${match[1]}-${match[2]}`;\n}\n\nconst gynecologicalDiagnosis =\n  (src.pogsDiagnosisMapping?.mapped ?? [])\n    .map(item => ({\n      categoryId: item.categoryId,\n      conditionId: item.conditionId,\n      gyneStage: item.gyneStage,\n      others: null,\n      othersField: null\n    }));\n\nreturn {\n  json: {\n    runContext:\n      src.runContext ?? {\n        mode: \"LIVE\",\n        rawCaseId: null\n      },\n\n    caseNum:\n      src.patient?.hospitalNumber ?? null,\n\n    birthDate:\n      toISODate(src.patient?.birthDate),\n\n    admissionDate:\n      toISODate(src.admission?.date),\n\n    room: null,\n\n    weight:\n      src.measurements?.weightKg ?? null,\n\n    height:\n      src.measurements?.heightCm ?? null,\n\n    isPregnancy:\n      src.classification?.isPregnancy ?? null,\n\n    isGyne:\n      src.classification?.isGyne ?? null,\n\n    isPostpartum:\n      src.classification?.isPostpartum ?? null,\n\n    obscoreG:\n      src.obstetric?.gravida ?? null,\n\n    obscoreP:\n      src.obstetric?.para ?? null,\n\n    obscoreFT:\n      src.obstetric?.fullTerm ?? null,\n\n    obscorePr:\n      src.obstetric?.preterm ?? null,\n\n    obscoreAb:\n      src.obstetric?.abortion ?? null,\n\n    obscoreLB:\n      src.obstetric?.living ?? null,\n\n    gynecologicalDiagnosis,\n\n    unresolvedDiagnoses:\n      src.pogsDiagnosisMapping?.unresolved ?? [],\n\n    ignoredDiagnosisTerms:\n      src.pogsDiagnosisMapping?.ignored ?? [],\n\n    classificationEvidence:\n      src.classification?.reasons ?? [],\n\n    source: {\n      title:\n        src.sourceTitle ?? null,\n\n      patientName:\n        src.patient?.name ?? null,\n\n      hospitalNumber:\n        src.patient?.hospitalNumber ?? null,\n\n      finalDiagnosis:\n        src.sections?.finalDiagnosis ?? null,\n\n      reasonForAdmission:\n        src.sections?.reasonForAdmission ?? null\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2016,
+        -1216
+      ],
+      "id": "35485fee-8f97-4fbe-ac55-8e40157db11e",
+      "name": "Build POGS Candidate"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $json;\n\nconst issues = [];\nconst warnings = [];\n\n\n// --------------------------------------------------\n// Required core identifiers\n// --------------------------------------------------\n\nif (!data.caseNum) {\n  issues.push(\"Missing caseNum\");\n}\n\nif (!data.birthDate) {\n  issues.push(\"Missing birthDate\");\n}\n\nif (!data.admissionDate) {\n  issues.push(\"Missing admissionDate\");\n}\n\n\n// --------------------------------------------------\n// Case classification\n// --------------------------------------------------\n\nif (\n  data.isPregnancy === null ||\n  data.isPregnancy === undefined\n) {\n  issues.push(\"isPregnancy not classified\");\n}\n\nif (\n  data.isGyne === null ||\n  data.isGyne === undefined\n) {\n  issues.push(\"isGyne not classified\");\n}\n\nif (\n  data.isPostpartum === null ||\n  data.isPostpartum === undefined\n) {\n  issues.push(\"isPostpartum not classified\");\n}\n\nif (\n  data.isPregnancy === false &&\n  data.isGyne === false\n) {\n  issues.push(\n    \"Neither pregnancy nor gyne case is selected\"\n  );\n}\n\n\n// --------------------------------------------------\n// OB score sanity checks\n// --------------------------------------------------\n\nconst obFields = [\n  \"obscoreG\",\n  \"obscoreP\",\n  \"obscoreFT\",\n  \"obscorePr\",\n  \"obscoreAb\",\n  \"obscoreLB\"\n];\n\nfor (const field of obFields) {\n  const value = data[field];\n\n  if (\n    value !== null &&\n    value !== undefined &&\n    (\n      !Number.isInteger(value) ||\n      value < 0\n    )\n  ) {\n    issues.push(\n      `${field} is invalid`\n    );\n  }\n}\n\n\n// --------------------------------------------------\n// Physical measurements\n// --------------------------------------------------\n\nif (\n  data.weight === null ||\n  data.weight === undefined\n) {\n  warnings.push(\n    \"Weight not extracted or requires review\"\n  );\n}\n\nif (\n  data.height === null ||\n  data.height === undefined\n) {\n  warnings.push(\n    \"Height not extracted or requires review\"\n  );\n}\n\n\n// --------------------------------------------------\n// Gyne diagnosis requirement\n//\n// A gyne case must have at least one confirmed\n// POGS gynecologicalDiagnosis mapping.\n// --------------------------------------------------\n\nif (data.isGyne === true) {\n  const mappedGyne =\n    data.gynecologicalDiagnosis || [];\n\n  if (mappedGyne.length === 0) {\n    issues.push(\n      \"Gyne case has no confirmed POGS gynecologicalDiagnosis mapping\"\n    );\n  }\n}\n\n\n// --------------------------------------------------\n// Pregnancy-specific validation\n//\n// Pregnancy-specific required rules are handled by\n// a separate pregnancy rules/workflow.\n//\n// Until that separate validation is implemented and\n// explicitly confirms the case, pregnancy cases must\n// NOT enter the POGS write branch.\n// --------------------------------------------------\n\nif (data.isPregnancy === true) {\n  issues.push(\n    \"Pregnancy-specific POGS validation pending\"\n  );\n}\n\n\n// --------------------------------------------------\n// Unresolved clinical terms\n//\n// These remain warnings unless a separate rule\n// specifically makes them required.\n// --------------------------------------------------\n\nfor (\n  const item of\n  data.unresolvedDiagnoses || []\n) {\n  warnings.push(\n    `Unresolved clinical term: ${item.sourceLabel}`\n  );\n}\n\n\n// --------------------------------------------------\n// Final validation state\n// --------------------------------------------------\n\nconst readyForPOGS =\n  issues.length === 0;\n\nreturn {\n  json: {\n    ...data,\n\n    validation: {\n      readyForPOGS,\n      needsReview:\n        !readyForPOGS,\n      issues,\n      warnings\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        -1216
+      ],
+      "id": "a13ba302-c259-425f-95b4-1e1bdaacac6d",
+      "name": "Validate POGS Candidate"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3971f87d-595f-408f-bf2a-654ed11b53eb",
+              "leftValue": "={{\n  $json.validation.readyForPOGS === true\n  &&\n  $json.runContext?.mode !== \"REGRESSION\"\n}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2464,
+        -1408
+      ],
+      "id": "949a0672-ca3b-411f-b34e-b3f90f0cc59f",
+      "name": "Candidate Ready?"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $json;\n\n// Use the clinical text that we already extracted.\n// Combine the most useful sections so classification is explainable.\nconst text = [\n  data.sections?.reasonForAdmission,\n  data.sections?.historyOfPresentIllness,\n  data.sections?.finalDiagnosis\n]\n  .filter(Boolean)\n  .join(' ')\n  .toLowerCase();\n\nconst reasons = [];\n\n/*\n * PREGNANCY\n *\n * Only mark true when there is reasonably explicit evidence of\n * a current pregnancy.\n */\nconst pregnancyPatterns = [\n  /\\bcurrent pregnancy\\b/i,\n  /\\bpregnancy uterine\\b/i,\n  /\\bpregnant\\b/i,\n  /\\bage of gestation\\b/i,\n  /\\baog\\b/i,\n  /\\bweeks? (?:and \\d+ days? )?(?:age of gestation|aog)\\b/i,\n  /\\bfetal\\b/i,\n  /\\bfht\\b/i\n];\n\nlet isPregnancy = pregnancyPatterns.some(pattern => pattern.test(text));\n\nif (isPregnancy) {\n  reasons.push(\"Current-pregnancy terminology found\");\n}\n\n/*\n * GYNE\n *\n * Use explicit gynecologic diagnoses/conditions rather than simply\n * assuming every female OB-GYN admission is a gyne case.\n */\nconst gynePatterns = [\n  /\\babnormal uterine bleeding\\b/i,\n  /\\bmyoma\\b/i,\n  /\\bfibroid\\b/i,\n  /\\bendometrial\\b/i,\n  /\\bmenorrhagia\\b/i,\n  /\\bmetrorrhagia\\b/i,\n  /\\bamenorrhea\\b/i,\n  /\\bdysmenorrhea\\b/i,\n  /\\bovarian\\b/i,\n  /\\bovary\\b/i,\n  /\\bcervical\\b/i,\n  /\\bcervix\\b/i,\n  /\\bvaginal bleeding\\b/i,\n  /\\bgynecologic\\b/i,\n  /\\bgynecological\\b/i\n];\n\nlet isGyne = gynePatterns.some(pattern => pattern.test(text));\n\nif (isGyne) {\n  reasons.push(\"Gynecologic diagnosis/condition terminology found\");\n}\n\n/*\n * POSTPARTUM\n *\n * Require relatively explicit postpartum/puerperium evidence.\n */\nconst postpartumPatterns = [\n  /\\bpostpartum\\b/i,\n  /\\bpost-partum\\b/i,\n  /\\bpuerperal\\b/i,\n  /\\bpost delivery\\b/i,\n  /\\bpost-delivery\\b/i,\n  /\\bstatus post delivery\\b/i,\n  /\\bs\\/p delivery\\b/i\n];\n\nlet isPostpartum = postpartumPatterns.some(pattern => pattern.test(text));\n\nif (isPostpartum) {\n  reasons.push(\"Postpartum/puerperium terminology found\");\n}\n\n/*\n * Negative current-pregnancy evidence.\n *\n * A negative pregnancy test can support false, but only when there is\n * no stronger explicit current-pregnancy evidence.\n */\nconst fullText = JSON.stringify(data).toLowerCase();\n\nconst pregnancyTestNegative =\n  /pregnancy test[^a-z0-9]*negative/i.test(fullText);\n\nif (!isPregnancy && pregnancyTestNegative) {\n  reasons.push(\"Pregnancy test documented as negative\");\n}\n\n/*\n * Do not force a classification if the text is ambiguous.\n *\n * null means \"needs review\", which is safer than guessing.\n */\nif (!isPregnancy && !isGyne && !isPostpartum) {\n  isPregnancy = null;\n  isGyne = null;\n  isPostpartum = null;\n\n  reasons.push(\"No sufficiently explicit case-type evidence found\");\n}\n\nreturn {\n  json: {\n    ...data,\n\n    classification: {\n      isPregnancy,\n      isGyne,\n      isPostpartum,\n      pregnancyTestNegative,\n      reasons\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        -1216
+      ],
+      "id": "da293466-239d-4916-9ff2-31e2c73bfd3b",
+      "name": "Classify Case Type"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $json;\n\nconst diagnosisText =\n  data.sections?.finalDiagnosis || '';\n\nconst normalized = diagnosisText\n  .replace(/^Final Diagnosis\\s*\\|\\s*:\\s*\\|?/i, '')\n  .replace(/\\|\\s*\\|\\s*\\|/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst terms = [];\n\n// Deterministic recognizers only.\n// These produce human-readable concepts, not POGS IDs.\n\nconst patterns = [\n  {\n    key: 'abnormalUterineBleeding',\n    label: 'Abnormal uterine bleeding',\n    regex: /\\babnormal uterine bleeding\\b/i\n  },\n  {\n    key: 'submucousMyoma',\n    label: 'Prolapsed submucous myoma',\n    regex: /\\bprolapsed submucous myoma\\b/i\n  },\n  {\n    key: 'endometrialThickening',\n    label: 'Endometrial thickening',\n    regex: /\\bendometrial thickening\\b/i\n  },\n  {\n    key: 'anemia',\n    label: 'Anemia',\n    regex: /\\banemia\\b/i\n  },\n  {\n    key: 'acuteBloodLoss',\n    label: 'Acute blood loss',\n    regex: /\\bacute blood loss\\b/i\n  },\n  {\n    key: 'obesity',\n    label: 'Obesity',\n    regex: /\\bobese\\b|\\bobesity\\b/i\n  },\n  {\n    key: 'bloodTransfusion',\n    label: 'Status post blood transfusion',\n    regex: /\\bs\\/p blood transfusion\\b/i\n  },\n  {\n    key: 'endometrialSampling',\n    label: 'Status post ultrasound guided endometrial sampling',\n    regex: /\\bendometrial sampling\\b/i\n  },\n  {\n    key: 'dmpa',\n    label: 'Status post DMPA injection',\n    regex: /\\bdmpa injection\\b/i\n  }\n];\n\nfor (const item of patterns) {\n  if (item.regex.test(normalized)) {\n    terms.push({\n      key: item.key,\n      label: item.label,\n      matched: true\n    });\n  }\n}\n\nreturn {\n  json: {\n    ...data,\n\n    diagnosisExtraction: {\n      raw: diagnosisText,\n      normalized,\n      terms\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        -1216
+      ],
+      "id": "3cae945f-47ee-4806-bc2e-05718df98273",
+      "name": "Extract Diagnosis Terms"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $json;\n\nconst lookup = {\n  abnormalUterineBleeding: {\n    status: \"unmapped\",\n    reason: \"No exact POGS gynecologicalDiagnosis reference confirmed\"\n  },\n\n  submucousMyoma: {\n    status: \"mapped\",\n    categoryId: 12,\n    conditionId: 114,\n    gyneStage: 6\n  },\n\n  endometrialThickening: {\n    status: \"unmapped\",\n    reason: \"POGS has Endometrial hyperplasia, unspecified, but source only says endometrial thickening\"\n  },\n\n  anemia: {\n    status: \"unmapped\",\n    reason: \"Not a gynecologicalDiagnosis mapping\"\n  },\n\n  acuteBloodLoss: {\n    status: \"unmapped\",\n    reason: \"Not a gynecologicalDiagnosis mapping\"\n  },\n\n  obesity: {\n    status: \"unmapped\",\n    reason: \"Not a gynecologicalDiagnosis mapping\"\n  },\n\n  bloodTransfusion: {\n    status: \"ignored\",\n    reason: \"Treatment/procedure, not gynecologicalDiagnosis\"\n  },\n\n  endometrialSampling: {\n    status: \"ignored\",\n    reason: \"Procedure, not gynecologicalDiagnosis\"\n  },\n\n  dmpa: {\n    status: \"ignored\",\n    reason: \"Medication/intervention, not gynecologicalDiagnosis\"\n  }\n};\n\nconst mapped = [];\nconst unresolved = [];\nconst ignored = [];\n\nfor (const term of data.diagnosisExtraction?.terms || []) {\n\n  const ref = lookup[term.key];\n\n  if (!ref) {\n    unresolved.push({\n      sourceKey: term.key,\n      sourceLabel: term.label,\n      reason: \"No mapping rule defined\"\n    });\n\n    continue;\n  }\n\n  if (ref.status === \"mapped\") {\n\n    mapped.push({\n      sourceKey: term.key,\n      sourceLabel: term.label,\n\n      categoryId: ref.categoryId,\n      conditionId: ref.conditionId,\n      gyneStage: ref.gyneStage\n    });\n\n  } else if (ref.status === \"ignored\") {\n\n    ignored.push({\n      sourceKey: term.key,\n      sourceLabel: term.label,\n      reason: ref.reason\n    });\n\n  } else {\n\n    unresolved.push({\n      sourceKey: term.key,\n      sourceLabel: term.label,\n      reason: ref.reason\n    });\n  }\n}\n\nreturn {\n  json: {\n    ...data,\n\n    pogsDiagnosisMapping: {\n      mapped,\n      unresolved,\n      ignored,\n\n      // Important:\n      // unresolved terms do NOT necessarily mean the whole case\n      // cannot go to POGS. Some terms simply belong elsewhere.\n      complete: unresolved.length === 0\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        -1216
+      ],
+      "id": "a43c59a4-8214-496c-8137-580261a238df",
+      "name": "Map Diagnosis to POGS References"
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:3000/ping",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2688,
+        -1408
+      ],
+      "id": "bd912049-744f-42fd-8c6d-31f818dccbe1",
+      "name": "Ping"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/accounts/login",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"username\": \"admin\",\n  \"password\": \"kUgt6FAUM0\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2912,
+        -1408
+      ],
+      "id": "478d5108-1360-46c1-a934-3c47edc464c6",
+      "name": "Login"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/patientcases",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $node[\"Login\"].json[\"token\"] }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"caseNum\": \"{{ $node[\"Validate POGS Candidate\"].json.caseNum }}\",\n  \"birthDate\": \"{{ $node[\"Validate POGS Candidate\"].json.birthDate }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        4192,
+        -1312
+      ],
+      "id": "a5a22c5c-f077-46f0-a900-8270163b84a2",
+      "name": "Create Patient Case Record"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{\n\"http://host.docker.internal:3000/api/patients/\"\n+\n$node[\"Create Patient Case Record\"].json[\"_id\"]\n+\n\"/cases\"\n}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $node[\"Login\"].json[\"token\"] }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=={{\n  {\n    caseNum:\n      $node[\"Validate POGS Candidate\"].json.caseNum,\n\n    admissionDate:\n      $node[\"Validate POGS Candidate\"].json.admissionDate,\n\n    room:\n      $node[\"Validate POGS Candidate\"].json.room,\n\n    weight:\n      $node[\"Validate POGS Candidate\"].json.weight,\n\n    height:\n      $node[\"Validate POGS Candidate\"].json.height,\n\n    isPregnancy:\n      $node[\"Validate POGS Candidate\"].json.isPregnancy,\n\n    isGyne:\n      $node[\"Validate POGS Candidate\"].json.isGyne,\n\n    isPostpartum:\n      $node[\"Validate POGS Candidate\"].json.isPostpartum,\n\n    obscoreG:\n      $node[\"Validate POGS Candidate\"].json.obscoreG,\n\n    obscoreP:\n      $node[\"Validate POGS Candidate\"].json.obscoreP,\n\n    obscoreFT:\n      $node[\"Validate POGS Candidate\"].json.obscoreFT,\n\n    obscorePr:\n      $node[\"Validate POGS Candidate\"].json.obscorePr,\n\n    obscoreAb:\n      $node[\"Validate POGS Candidate\"].json.obscoreAb,\n\n    obscoreLB:\n      $node[\"Validate POGS Candidate\"].json.obscoreLB,\n\n    gynecologicalDiagnosis:\n      $node[\"Validate POGS Candidate\"].json.gynecologicalDiagnosis\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        4416,
+        -1312
+      ],
+      "id": "22e975d8-ad5d-4b1f-9a3a-d7f8ba021c82",
+      "name": "Create Case"
+    },
+    {
+      "parameters": {
+        "url": "=http://host.docker.internal:3000/api/patientcases",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $node[\"Validate POGS Candidate\"].json[\"caseNum\"] }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $node[\"Login\"].json[\"token\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        3136,
+        -1408
+      ],
+      "id": "8ca69ced-ffd8-4fb9-b878-3dec186287c9",
+      "name": "Check Existing Case",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "54c7c21f-7daf-463f-8e6f-b383647a327c",
+              "leftValue": "={{ $json.exists }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3584,
+        -1408
+      ],
+      "id": "0cc0ac5f-4d23-4e47-9ff5-bedc865510a3",
+      "name": "Case Already Exists?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const requestedCaseNum = $node[\"Validate POGS Candidate\"].json.caseNum;\n\nconst matches = $items(\"Check Existing Case\")\n  .map(item => item.json)\n  .filter(row => row.caseNum === requestedCaseNum);\n\nreturn [\n  {\n    json: {\n      caseNum: requestedCaseNum,\n      exists: matches.length > 0,\n      matchCount: matches.length,\n      matches\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        -1408
+      ],
+      "id": "c0191010-db0c-4634-a242-e4bfa5a3078d",
+      "name": "Normalize Case Check"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"status\": \"skipped\",\n  \"reason\": \"case_number_already_exists\",\n  \"caseNum\": \"{{ $node['Validate POGS Candidate'].json['caseNum'] }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        3808,
+        -1504
+      ],
+      "id": "a38d966d-b97b-458d-a719-083019c1b646",
+      "name": "Duplicate Case - STOP"
+    },
+    {
+      "parameters": {
+        "url": "={{\n  \"http://host.docker.internal:3000/api/patients/\"\n  + $node[\"Create Patient Case Record\"].json[\"_id\"]\n  + \"/cases/\"\n  + $node[\"Create Case\"].json[\"_id\"]\n}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $node[\"Login\"].json[\"token\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        4640,
+        -1312
+      ],
+      "id": "64b08050-b0e9-4da4-b9d8-c3082aa37eb0",
+      "name": "Verify Created Case"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d = $json;\n\nconst knownFields = new Set([\n  \"caseNum\",\n  \"birthDate\",\n  \"admissionDate\",\n  \"room\",\n  \"weight\",\n  \"height\",\n  \"isPregnancy\",\n  \"isGyne\",\n  \"isPostpartum\",\n  \"obscoreG\",\n  \"obscoreP\",\n  \"obscoreFT\",\n  \"obscorePr\",\n  \"obscoreAb\",\n  \"obscoreLB\",\n  \"gynecologicalDiagnosis\",\n  \"unresolvedDiagnoses\",\n  \"ignoredDiagnosisTerms\",\n  \"classificationEvidence\",\n  \"source\",\n  \"validation\",\n  \"runContext\"\n]);\n\nconst unknownFields = Object.keys(d)\n  .filter(key => !knownFields.has(key));\n\nconst mappedDiagnoses =\n  d.gynecologicalDiagnosis ?? [];\n\nconst unresolvedDiagnoses =\n  d.unresolvedDiagnoses ?? [];\n\nconst ignoredDiagnosisTerms =\n  d.ignoredDiagnosisTerms ?? [];\n\nconst recognizedTerms =\n  mappedDiagnoses.length +\n  unresolvedDiagnoses.length +\n  ignoredDiagnosisTerms.length;\n\nconst mappedTerms =\n  mappedDiagnoses.length;\n\nconst unresolvedTerms =\n  unresolvedDiagnoses.length;\n\nconst ignoredTerms =\n  ignoredDiagnosisTerms.length;\n\nconst mappingComplete =\n  unresolvedTerms === 0;\n\nconst needsClinicalMappingReview =\n  unresolvedTerms > 0;\n\nconst ruleEvaluation = [];\n\n// Gyne diagnosis rules\nif (d.isGyne === true) {\n  ruleEvaluation.push({\n    field: \"gynecologicalDiagnosis\",\n    visible: true,\n    required: true,\n    applicable: true,\n    reason: \"isGyne = true\",\n    satisfied: mappedDiagnoses.length > 0\n  });\n} else if (d.isGyne === false) {\n  ruleEvaluation.push({\n    field: \"gynecologicalDiagnosis\",\n    visible: false,\n    required: false,\n    applicable: false,\n    reason: \"isGyne = false\",\n    satisfied: true\n  });\n} else {\n  ruleEvaluation.push({\n    field: \"gynecologicalDiagnosis\",\n    visible: null,\n    required: null,\n    applicable: null,\n    reason: \"isGyne is not classified\",\n    satisfied: false\n  });\n}\n\n// Pregnancy section\nif (d.isPregnancy === true) {\n  ruleEvaluation.push({\n    field: \"pregnancySection\",\n    visible: true,\n    required: true,\n    applicable: true,\n    reason: \"isPregnancy = true\",\n    satisfied: null\n  });\n} else if (d.isPregnancy === false) {\n  ruleEvaluation.push({\n    field: \"pregnancySection\",\n    visible: false,\n    required: false,\n    applicable: false,\n    reason: \"isPregnancy = false\",\n    satisfied: true\n  });\n} else {\n  ruleEvaluation.push({\n    field: \"pregnancySection\",\n    visible: null,\n    required: null,\n    applicable: null,\n    reason: \"isPregnancy is not classified\",\n    satisfied: false\n  });\n}\n\n// Postpartum section\nif (d.isPostpartum === true) {\n  ruleEvaluation.push({\n    field: \"postpartumSection\",\n    visible: true,\n    required: null,\n    applicable: true,\n    reason: \"isPostpartum = true\",\n    satisfied: null\n  });\n} else if (d.isPostpartum === false) {\n  ruleEvaluation.push({\n    field: \"postpartumSection\",\n    visible: false,\n    required: false,\n    applicable: false,\n    reason: \"isPostpartum = false\",\n    satisfied: true\n  });\n} else {\n  ruleEvaluation.push({\n    field: \"postpartumSection\",\n    visible: null,\n    required: null,\n    applicable: null,\n    reason: \"isPostpartum is not classified\",\n    satisfied: false\n  });\n}\n\n// OB score applicability\nconst obScoreValues = [\n  d.obscoreG,\n  d.obscoreP,\n  d.obscoreFT,\n  d.obscorePr,\n  d.obscoreAb,\n  d.obscoreLB\n];\n\nconst hasAnyOBScore =\n  obScoreValues.some(\n    value => value !== null && value !== undefined\n  );\n\nruleEvaluation.push({\n  field: \"obstetricScore\",\n  visible: null,\n  required: null,\n  applicable: hasAnyOBScore,\n  reason: hasAnyOBScore\n    ? \"OB score data was extracted from source\"\n    : \"No OB score data was extracted\",\n  satisfied: hasAnyOBScore\n});\n\n// Weight extraction\nruleEvaluation.push({\n  field: \"weight\",\n  visible: true,\n  required: false,\n  applicable: true,\n  reason: \"General patient measurement\",\n  satisfied:\n    d.weight !== null &&\n    d.weight !== undefined\n});\n\n// Height extraction\nruleEvaluation.push({\n  field: \"height\",\n  visible: true,\n  required: false,\n  applicable: true,\n  reason: \"General patient measurement\",\n  satisfied:\n    d.height !== null &&\n    d.height !== undefined\n});\n\nconst unsatisfiedRules =\n  ruleEvaluation.filter(\n    rule =>\n      rule.required === true &&\n      rule.satisfied === false\n  );\n\nconst timestamp =\n  new Date().toISOString();\n\n// Generate a stable non-identifying knowledge ID.\n// The same caseNum will always generate the same ID,\n// so rerunning the same candidate overwrites its knowledge file.\n\nif (!d.caseNum) {\n  throw new Error(\"Cannot generate knowledgeId: candidate has no caseNum\");\n}\n\nfunction stableHash(value) {\n  const str = String(value);\n\n  let hash1 = 0xdeadbeef;\n  let hash2 = 0x41c6ce57;\n\n  for (let i = 0; i < str.length; i++) {\n    const ch = str.charCodeAt(i);\n\n    hash1 = Math.imul(hash1 ^ ch, 2654435761);\n    hash2 = Math.imul(hash2 ^ ch, 1597334677);\n  }\n\n  hash1 =\n    Math.imul(\n      hash1 ^ (hash1 >>> 16),\n      2246822507\n    ) ^\n    Math.imul(\n      hash2 ^ (hash2 >>> 13),\n      3266489909\n    );\n\n  hash2 =\n    Math.imul(\n      hash2 ^ (hash2 >>> 16),\n      2246822507\n    ) ^\n    Math.imul(\n      hash1 ^ (hash1 >>> 13),\n      3266489909\n    );\n\n  return (\n    (hash2 >>> 0).toString(16).padStart(8, \"0\") +\n    (hash1 >>> 0).toString(16).padStart(8, \"0\")\n  );\n}\n\nconst knowledgeId =\n  `CASE-${stableHash(d.caseNum)}`;\n\nreturn {\n  json: {\n    schemaVersion: 2,\n\n    knowledgeId,\n    timestamp,\n\n    executionId:\n      $execution?.id ?? null,\n\n    classification: {\n      isPregnancy:\n        d.isPregnancy ?? null,\n\n      isGyne:\n        d.isGyne ?? null,\n\n      isPostpartum:\n        d.isPostpartum ?? null,\n\n      evidence:\n        d.classificationEvidence ?? []\n    },\n\n    runContext: {\n      mode: d.runContext?.mode ?? \"UNKNOWN\",\n      rawCaseId: d.runContext?.rawCaseId ?? null\n    },\n\n    extracted: {\n      birthDatePresent:\n        Boolean(d.birthDate),\n\n      admissionDatePresent:\n        Boolean(d.admissionDate),\n\n      roomPresent:\n        d.room !== null &&\n        d.room !== undefined,\n\n      weightPresent:\n        d.weight !== null &&\n        d.weight !== undefined,\n\n      heightPresent:\n        d.height !== null &&\n        d.height !== undefined,\n\n      obscoreG:\n        d.obscoreG ?? null,\n\n      obscoreP:\n        d.obscoreP ?? null,\n\n      obscoreFT:\n        d.obscoreFT ?? null,\n\n      obscorePr:\n        d.obscorePr ?? null,\n\n      obscoreAb:\n        d.obscoreAb ?? null,\n\n      obscoreLB:\n        d.obscoreLB ?? null\n    },\n\n    mapped: {\n      gynecologicalDiagnosis:\n        mappedDiagnoses\n    },\n\n    unresolved:\n      unresolvedDiagnoses,\n\n    ignored:\n      ignoredDiagnosisTerms,\n\n    mappingCoverage: {\n      recognizedTerms,\n      mappedTerms,\n      unresolvedTerms,\n      ignoredTerms\n    },\n\n    mappingStatus: {\n      mappingComplete,\n      needsClinicalMappingReview\n    },\n\n    ruleEvaluation,\n\n    ruleStatus: {\n      evaluatedRules:\n        ruleEvaluation.length,\n\n      unsatisfiedRequiredRules:\n        unsatisfiedRules,\n\n      needsRuleReview:\n        unsatisfiedRules.length > 0\n    },\n\n    validation: {\n      readyForPOGS:\n        d.validation?.readyForPOGS ?? false,\n\n      issues:\n        d.validation?.issues ?? [],\n\n      warnings:\n        d.validation?.warnings ?? []\n    },\n\n    discovery: {\n      unknownTopLevelFields:\n        unknownFields,\n\n      needsMappingReview:\n        needsClinicalMappingReview,\n\n      needsRuleReview:\n        unknownFields.length > 0 ||\n        unsatisfiedRules.length > 0\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        -1120
+      ],
+      "id": "596ac9c5-e119-4b17-8dbf-ea95b32b09c1",
+      "name": "Build Knowledge Record"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const record =\n  $json.currentRecord;\n\nif (!record?.knowledgeId) {\n  throw new Error(\n    \"Missing current knowledge record\"\n  );\n}\n\nconst content =\n  JSON.stringify(\n    record,\n    null,\n    2\n  );\n\nreturn {\n  json: {\n    knowledgeId:\n      record.knowledgeId,\n\n    fileName:\n      `${record.knowledgeId}.json`,\n\n    regressionResult:\n      $json.regressionResult\n  },\n\n  binary: {\n    data: {\n      data:\n        Buffer\n          .from(content, \"utf8\")\n          .toString(\"base64\"),\n\n      mimeType:\n        \"application/json\",\n\n      fileName:\n        `${record.knowledgeId}.json`\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        -1216
+      ],
+      "id": "8348b2b9-c956-44c1-ab25-c3ae1bdef764",
+      "name": "Knowledge Record to File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const candidate =\n  $node[\"Validate POGS Candidate\"].json;\n\nconst verified =\n  $json;\n\nconst timestamp =\n  new Date().toISOString();\n\nfunction stableHash(value) {\n  const str = String(value);\n\n  let hash1 = 0xdeadbeef;\n  let hash2 = 0x41c6ce57;\n\n  for (let i = 0; i < str.length; i++) {\n    const ch = str.charCodeAt(i);\n\n    hash1 = Math.imul(hash1 ^ ch, 2654435761);\n    hash2 = Math.imul(hash2 ^ ch, 1597334677);\n  }\n\n  hash1 =\n    Math.imul(hash1 ^ (hash1 >>> 16), 2246822507) ^\n    Math.imul(hash2 ^ (hash2 >>> 13), 3266489909);\n\n  hash2 =\n    Math.imul(hash2 ^ (hash2 >>> 16), 2246822507) ^\n    Math.imul(hash1 ^ (hash1 >>> 13), 3266489909);\n\n  return (\n    (hash2 >>> 0).toString(16).padStart(8, \"0\") +\n    (hash1 >>> 0).toString(16).padStart(8, \"0\")\n  );\n}\n\nif (!candidate.caseNum) {\n  throw new Error(\"Cannot generate knowledgeId: missing caseNum\");\n}\n\nconst knowledgeId =\n  `CASE-${stableHash(candidate.caseNum)}`;\n\nconst differences = [];\n\nfunction compare(field, expected, actual) {\n  const a = JSON.stringify(expected ?? null);\n  const b = JSON.stringify(actual ?? null);\n\n  if (a !== b) {\n    differences.push({\n      field,\n      expected: expected ?? null,\n      actual: actual ?? null\n    });\n  }\n}\n\ncompare(\n  \"isPregnancy\",\n  candidate.isPregnancy,\n  verified.isPregnancy\n);\n\ncompare(\n  \"isGyne\",\n  candidate.isGyne,\n  verified.isGyne\n);\n\ncompare(\n  \"isPostpartum\",\n  candidate.isPostpartum,\n  verified.isPostpartum\n);\n\ncompare(\n  \"weight\",\n  candidate.weight,\n  verified.weight\n);\n\ncompare(\n  \"height\",\n  candidate.height,\n  verified.height\n);\n\ncompare(\n  \"obscoreG\",\n  candidate.obscoreG,\n  verified.obscoreG\n);\n\ncompare(\n  \"obscoreP\",\n  candidate.obscoreP,\n  verified.obscoreP\n);\n\ncompare(\n  \"gynecologicalDiagnosis\",\n  candidate.gynecologicalDiagnosis,\n  verified.gynecologicalDiagnosis\n);\n\nreturn [{\n  json: {\n    schemaVersion: 1,\n\n    knowledgeId,\n\n    timestamp,\n\n    executionId:\n      $execution?.id ?? null,\n\n    stage:\n      \"POGS_VERIFICATION\",\n\n    result: {\n      verified:\n        Boolean(verified?._id),\n\n      caseIdPresent:\n        Boolean(verified?._id),\n\n      patientIdPresent:\n        Boolean(\n          verified?.patientId ||\n          verified?.patientid\n        )\n    },\n\n    expected: {\n      isPregnancy:\n        candidate.isPregnancy ?? null,\n\n      isGyne:\n        candidate.isGyne ?? null,\n\n      isPostpartum:\n        candidate.isPostpartum ?? null,\n\n      weight:\n        candidate.weight ?? null,\n\n      height:\n        candidate.height ?? null,\n\n      obscoreG:\n        candidate.obscoreG ?? null,\n\n      obscoreP:\n        candidate.obscoreP ?? null,\n\n      gynecologicalDiagnosis:\n        candidate.gynecologicalDiagnosis ?? []\n    },\n\n    stored: {\n      isPregnancy:\n        verified.isPregnancy ?? null,\n\n      isGyne:\n        verified.isGyne ?? null,\n\n      isPostpartum:\n        verified.isPostpartum ?? null,\n\n      weight:\n        verified.weight ?? null,\n\n      height:\n        verified.height ?? null,\n\n      obscoreG:\n        verified.obscoreG ?? null,\n\n      obscoreP:\n        verified.obscoreP ?? null,\n\n      gynecologicalDiagnosis:\n        verified.gynecologicalDiagnosis ?? []\n    },\n\n    differences,\n\n    needsPOGSBehaviorReview:\n      differences.length > 0\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4864,
+        -1312
+      ],
+      "id": "ef2bf0ec-f7aa-498a-993a-32ae8eb28195",
+      "name": "Build POGS Result Knowledge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const record = $json;\n\nconst content =\n  JSON.stringify(record, null, 2);\n\nreturn [{\n  json: {\n    knowledgeId:\n      record.knowledgeId,\n\n    fileName:\n      `${record.knowledgeId}-POGS.json`\n  },\n\n  binary: {\n    data: {\n      data:\n        Buffer\n          .from(content, \"utf8\")\n          .toString(\"base64\"),\n\n      mimeType:\n        \"application/json\",\n\n      fileName:\n        `${record.knowledgeId}-POGS.json`\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5088,
+        -1312
+      ],
+      "id": "40304019-7aae-41ef-a0e0-f0f7a67640dc",
+      "name": "Result Record to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ \"/data/knowledge/\" + $json.fileName }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        5312,
+        -1312
+      ],
+      "id": "5bb294b9-d769-4b57-bf87-103619ca785c",
+      "name": "Read/Write Files from Disk1"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentURL": "={{ $json.documentId }}",
+        "simple": false
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        672,
+        -1408
+      ],
+      "id": "064116e9-77eb-4c11-b77c-f29835266d94",
+      "name": "Extract Google Doc Text",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "NRlEgQamrPdmVK3h",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const doc = $json;\n\nconst documentId =\n  $node[\"Extract Google Doc Text\"].json.documentId;\n\nif (!documentId) {\n  throw new Error(\"Missing Google documentId\");\n}\n\nfunction stableHash(value) {\n  const str = String(value);\n\n  let hash1 = 0xdeadbeef;\n  let hash2 = 0x41c6ce57;\n\n  for (let i = 0; i < str.length; i++) {\n    const ch = str.charCodeAt(i);\n\n    hash1 = Math.imul(hash1 ^ ch, 2654435761);\n    hash2 = Math.imul(hash2 ^ ch, 1597334677);\n  }\n\n  hash1 =\n    Math.imul(hash1 ^ (hash1 >>> 16), 2246822507) ^\n    Math.imul(hash2 ^ (hash2 >>> 13), 3266489909);\n\n  hash2 =\n    Math.imul(hash2 ^ (hash2 >>> 16), 2246822507) ^\n    Math.imul(hash1 ^ (hash1 >>> 13), 3266489909);\n\n  return (\n    (hash2 >>> 0).toString(16).padStart(8, \"0\") +\n    (hash1 >>> 0).toString(16).padStart(8, \"0\")\n  );\n}\n\nconst rawCaseId =\n  `RAW-DOC-${stableHash(documentId)}`;\n\nreturn {\n  json: {\n    schemaVersion: 4,\n\n    rawCaseId,\n\n    capturedAt:\n      new Date().toISOString(),\n\n    executionId:\n      $execution?.id ?? null,\n\n    source: {\n      documentId,\n      title:\n        doc.title ?? null\n    },\n\n    googleDoc:\n      doc\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -1456
+      ],
+      "id": "ac4c9e3b-e1bc-4403-b16f-0ba7d3063972",
+      "name": "Build Raw Case Snapshot"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const record = $json;\n\nconst content =\n  JSON.stringify(record, null, 2);\n\nreturn {\n  json: {\n    rawCaseId:\n      record.rawCaseId,\n\n    fileName:\n      `${record.rawCaseId}.json`\n  },\n\n  binary: {\n    data: {\n      data:\n        Buffer\n          .from(content, \"utf8\")\n          .toString(\"base64\"),\n\n      mimeType:\n        \"application/json\",\n\n      fileName:\n        `${record.rawCaseId}.json`\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -1456
+      ],
+      "id": "bd393fbf-79cf-41b8-bf56-816e65e46107",
+      "name": "Raw Case to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ \"/data/cases/raw_cases/\" + $json.fileName }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        -1456
+      ],
+      "id": "da2c58e5-8f4d-42e1-88e6-44a3be01a6db",
+      "name": "Read/Write Files from Disk2"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function extractParagraph(paragraph) {\n  if (!paragraph?.elements) return '';\n\n  return paragraph.elements\n    .map(el => el.textRun?.content || '')\n    .join('');\n}\n\nfunction extractStructuralElements(elements) {\n  let output = '';\n\n  for (const element of elements || []) {\n\n    // Normal paragraph\n    if (element.paragraph) {\n      output += extractParagraph(element.paragraph);\n    }\n\n    // Table\n    if (element.table) {\n      for (const row of element.table.tableRows || []) {\n\n        const cells = [];\n\n        for (const cell of row.tableCells || []) {\n          const cellText = extractStructuralElements(cell.content)\n            .replace(/\\n+/g, ' ')\n            .trim();\n\n          cells.push(cellText);\n        }\n\n        // Preserve columns in a readable way\n        output += cells.join(' | ') + '\\n';\n      }\n    }\n\n    // Table of contents, if one exists\n    if (element.tableOfContents) {\n      output += extractStructuralElements(\n        element.tableOfContents.content\n      );\n    }\n  }\n\n  return output;\n}\n\nconst document = $json;\n\nconst documentText = extractStructuralElements(\n  document.body?.content\n)\n  .replace(/[ \\t]+\\n/g, '\\n')\n  .replace(/\\n{3,}/g, '\\n\\n')\n  .trim();\n\nreturn {\n  json: {\n    title: document.title,\n    documentText,\n\n    runContext:\n      document.__runContext ?? {\n        mode: \"LIVE\",\n        rawCaseId: null\n      }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -1216
+      ],
+      "id": "f3f961ba-a69a-46ec-a115-6166fac56857",
+      "name": "Normalize Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nif (items.length === 0) {\n  throw new Error(\"No raw case files found\");\n}\n\nconst output = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n\n  const binaryKeys =\n    Object.keys(item.binary ?? {});\n\n  if (binaryKeys.length === 0) {\n    throw new Error(\n      `Raw case item ${i} has no binary file`\n    );\n  }\n\n  const binaryPropertyName =\n    binaryKeys[0];\n\n  const buffer =\n    await this.helpers.getBinaryDataBuffer(\n      i,\n      binaryPropertyName\n    );\n\n  const text =\n    buffer.toString(\"utf8\");\n\n  let record;\n\n  try {\n    record = JSON.parse(text);\n  } catch (error) {\n    throw new Error(\n      `Raw case item ${i} is invalid JSON: ${error.message}`\n    );\n  }\n\n  if (!record.googleDoc) {\n    throw new Error(\n      `Raw case item ${i} does not contain googleDoc`\n    );\n  }\n\n  output.push({\n    json: {\n      ...record.googleDoc,\n\n      __runContext: {\n        mode: \"REGRESSION\",\n        rawCaseId:\n          record.rawCaseId ?? null\n      }\n    },\n\n    pairedItem: {\n      item: i\n    }\n  });\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        -1168
+      ],
+      "id": "87aeecfe-99f5-4033-8da1-e279cfc60dfe",
+      "name": "Load Raw Case"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/data/cases/raw_cases/*.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        -1168
+      ],
+      "id": "13ae1f84-927a-4a4f-b4c9-d2f8d1cf6ae7",
+      "name": "Read Raw Case File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst summary = {\n  generatedAt: new Date().toISOString(),\n  totalCases: items.length,\n\n  statusCounts: {\n    NEW: 0,\n    IMPROVED: 0,\n    REGRESSED: 0,\n    CHANGED: 0,\n    UNCHANGED: 0,\n    UNKNOWN: 0\n  },\n\n  readyForPOGS: 0,\n  notReadyForPOGS: 0,\n\n  totalMappedTerms: 0,\n  totalUnresolvedTerms: 0,\n  totalValidationIssues: 0,\n  totalWarnings: 0,\n  totalUnsatisfiedRules: 0,\n  totalUnknownFields: 0,\n\n  needsAttention: 0,\n\n  cases: []\n};\n\nfor (const item of items) {\n  const data = item.json;\n\n  const regression =\n    data.regressionResult ?? {};\n\n  const current =\n    data.currentRecord ?? {};\n\n  const status =\n    regression.status ?? \"UNKNOWN\";\n\n  if (\n    Object.prototype.hasOwnProperty.call(\n      summary.statusCounts,\n      status\n    )\n  ) {\n    summary.statusCounts[status]++;\n  } else {\n    summary.statusCounts.UNKNOWN++;\n  }\n\n  const metrics =\n    regression.currentMetrics ?? {};\n\n  const ready =\n    metrics.readyForPOGS === true;\n\n  if (ready) {\n    summary.readyForPOGS++;\n  } else {\n    summary.notReadyForPOGS++;\n  }\n\n  summary.totalMappedTerms +=\n    Number(metrics.mapped ?? 0);\n\n  summary.totalUnresolvedTerms +=\n    Number(metrics.unresolved ?? 0);\n\n  summary.totalValidationIssues +=\n    Number(metrics.issues ?? 0);\n\n  summary.totalWarnings +=\n    Number(metrics.warnings ?? 0);\n\n  summary.totalUnsatisfiedRules +=\n    Number(metrics.unsatisfiedRules ?? 0);\n\n  summary.totalUnknownFields +=\n    Number(metrics.unknownFields ?? 0);\n\n  const requiresAttention =\n    status === \"REGRESSED\" ||\n    status === \"CHANGED\" ||\n    Number(metrics.unresolved ?? 0) > 0 ||\n    Number(metrics.issues ?? 0) > 0 ||\n    Number(metrics.unsatisfiedRules ?? 0) > 0 ||\n    Number(metrics.unknownFields ?? 0) > 0;\n\n  if (requiresAttention) {\n    summary.needsAttention++;\n  }\n\n  summary.cases.push({\n    knowledgeId:\n      data.knowledgeId ?? null,\n\n    rawCaseId:\n      current.runContext?.rawCaseId ?? null,\n\n    mode:\n      current.runContext?.mode ?? \"UNKNOWN\",\n\n    status,\n\n    readyForPOGS: ready,\n\n    mappedTerms:\n      metrics.mapped ?? 0,\n\n    unresolvedTerms:\n      metrics.unresolved ?? 0,\n\n    validationIssues:\n      metrics.issues ?? 0,\n\n    warnings:\n      metrics.warnings ?? 0,\n\n    unsatisfiedRules:\n      metrics.unsatisfiedRules ?? 0,\n\n    unknownFields:\n      metrics.unknownFields ?? 0,\n\n    changes:\n      regression.changes ?? [],\n\n    needsAttention:\n      requiresAttention\n  });\n}\n\nsummary.allCasesStable =\n  summary.statusCounts.REGRESSED === 0 &&\n  summary.statusCounts.CHANGED === 0;\n\nreturn [\n  {\n    json: summary\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        -1024
+      ],
+      "id": "ac5388a5-e4a6-4d57-85f3-35cccc2cc0bb",
+      "name": "Regression Summary"
+    },
+    {
+      "parameters": {
+        "jsCode": "const report = $json;\n\nconst filename = \"latest-regression.json\";\n\nconst content =\n  JSON.stringify(report, null, 2);\n\nreturn [{\n  json: {\n    filename\n  },\n\n  binary: {\n    data: {\n      data:\n        Buffer\n          .from(content, \"utf8\")\n          .toString(\"base64\"),\n\n      mimeType:\n        \"application/json\",\n\n      fileName:\n        filename\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3744,
+        -1024
+      ],
+      "id": "78374d4d-f15a-4ae2-a368-edcfd86d6bcf",
+      "name": "Summary to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ \"/data/logs/\" + $json.filename }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        3968,
+        -1024
+      ],
+      "id": "a5cf59fa-b620-4cb2-8d0d-19d9fa054ebc",
+      "name": "Write Regression Report"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ \"/data/knowledge/\" + $json.knowledgeId + \".json\" }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        2624,
+        -864
+      ],
+      "id": "6cb86f34-87ff-49e9-bdd1-33f1340891c3",
+      "name": "Read Existing Knowledge File",
+      "alwaysOutputData": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const current = $json;\n\nif (!current?.knowledgeId) {\n  throw new Error(\n    \"Current knowledge record is missing knowledgeId\"\n  );\n}\n\n\n// --------------------------------------------------\n// Load previous knowledge record if one exists\n// --------------------------------------------------\n\nlet previous = null;\n\nconst binaryKeys =\n  Object.keys($binary ?? {});\n\nif (binaryKeys.length > 0) {\n\n  try {\n\n    const binaryProperty =\n      binaryKeys[0];\n\n    const buffer =\n  await this.helpers.getBinaryDataBuffer(\n    $itemIndex,\n    binaryProperty\n  );\n    const text =\n      buffer.toString(\"utf8\");\n\n    previous =\n      JSON.parse(text);\n\n  } catch (error) {\n\n    previous = null;\n\n  }\n}\n\n\n// --------------------------------------------------\n// Normalize objects before comparing\n// Ignore fields that naturally change every run\n// --------------------------------------------------\n\nfunction comparable(record) {\n\n  if (!record) return null;\n\n  const copy =\n    JSON.parse(\n      JSON.stringify(record)\n    );\n\n  delete copy.lastUpdatedAt;\n  delete copy.timestamp;\n  delete copy.executionId;\n  delete copy.capturedAt;\n  delete copy.runContext;\n  return copy;\n}\n\n\n// --------------------------------------------------\n// Useful numeric metrics\n// --------------------------------------------------\n\nfunction metrics(record) {\n\n  return {\n\n    mapped:\n      record?.mappingCoverage\n        ?.mappedTerms ?? 0,\n\n    unresolved:\n      record?.mappingCoverage\n        ?.unresolvedTerms ?? 0,\n\n    issues:\n      record?.validation\n        ?.issues?.length ?? 0,\n\n    warnings:\n      record?.validation\n        ?.warnings?.length ?? 0,\n\n    unsatisfiedRules:\n      record?.ruleStatus\n        ?.unsatisfiedRequiredRules\n        ?.length ?? 0,\n\n    unknownFields:\n      record?.discovery\n        ?.unknownTopLevelFields\n        ?.length ?? 0,\n\n    readyForPOGS:\n      record?.validation\n        ?.readyForPOGS ?? false\n\n  };\n}\n\n\nconst currentMetrics =\n  metrics(current);\n\nconst previousMetrics =\n  previous\n    ? metrics(previous)\n    : null;\n\n\n// --------------------------------------------------\n// Determine change status\n// --------------------------------------------------\n\nlet status = \"NEW\";\n\nif (previous) {\n\n  const same =\n    JSON.stringify(\n      comparable(previous)\n    ) ===\n    JSON.stringify(\n      comparable(current)\n    );\n\n  if (same) {\n\n    status = \"UNCHANGED\";\n\n  } else {\n\n    let improvementScore = 0;\n    let regressionScore = 0;\n\n\n    // Fewer unresolved mappings = improvement\n    if (\n      currentMetrics.unresolved <\n      previousMetrics.unresolved\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.unresolved >\n      previousMetrics.unresolved\n    ) {\n      regressionScore++;\n    }\n\n\n    // More mapped terms = improvement\n    if (\n      currentMetrics.mapped >\n      previousMetrics.mapped\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.mapped <\n      previousMetrics.mapped\n    ) {\n      regressionScore++;\n    }\n\n\n    // Fewer validation issues = improvement\n    if (\n      currentMetrics.issues <\n      previousMetrics.issues\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.issues >\n      previousMetrics.issues\n    ) {\n      regressionScore++;\n    }\n\n\n    // Fewer unsatisfied rules = improvement\n    if (\n      currentMetrics.unsatisfiedRules <\n      previousMetrics.unsatisfiedRules\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.unsatisfiedRules >\n      previousMetrics.unsatisfiedRules\n    ) {\n      regressionScore++;\n    }\n\n\n    // Fewer unknown fields = improvement\n    if (\n      currentMetrics.unknownFields <\n      previousMetrics.unknownFields\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.unknownFields >\n      previousMetrics.unknownFields\n    ) {\n      regressionScore++;\n    }\n\n\n    // Becoming POGS-ready is improvement\n    if (\n      currentMetrics.readyForPOGS === true &&\n      previousMetrics.readyForPOGS === false\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.readyForPOGS === false &&\n      previousMetrics.readyForPOGS === true\n    ) {\n      regressionScore++;\n    }\n\n\n    if (\n      improvementScore > 0 &&\n      regressionScore === 0\n    ) {\n\n      status = \"IMPROVED\";\n\n    } else if (\n      regressionScore > 0 &&\n      improvementScore === 0\n    ) {\n\n      status = \"REGRESSED\";\n\n    } else {\n\n      status = \"CHANGED\";\n\n    }\n  }\n}\n\n\n// --------------------------------------------------\n// Build specific differences\n// --------------------------------------------------\n\nconst changes = [];\n\nif (previousMetrics) {\n\n  for (\n    const field of Object.keys(currentMetrics)\n  ) {\n\n    const before =\n      previousMetrics[field];\n\n    const after =\n      currentMetrics[field];\n\n    if (\n      JSON.stringify(before) !==\n      JSON.stringify(after)\n    ) {\n\n      changes.push({\n        field,\n        before,\n        after\n      });\n\n    }\n  }\n}\n\n\nreturn {\n  json: {\n\n    knowledgeId:\n      current.knowledgeId,\n\n    regressionResult: {\n\n      status,\n\n      hadPreviousRecord:\n        Boolean(previous),\n\n      previousMetrics,\n\n      currentMetrics,\n\n      changes\n\n    },\n\n    currentRecord:\n      current\n\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3296,
+        -1120
+      ],
+      "id": "ed0e1a9e-eb09-4d9a-9d90-78b55275949f",
+      "name": "Compare Knowledge Record"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ \"/data/knowledge/\" + $json.fileName }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        3744,
+        -1216
+      ],
+      "id": "4a31e3b0-86b9-4026-bc30-3c7604094fbd",
+      "name": "Write Knowledge File"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2912,
+        -1120
+      ],
+      "id": "d9818984-4173-4871-8cc0-bbf40fb7f10a",
+      "name": "Merge"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Read Raw Case File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        []
+      ]
+    },
+    "Extract Row Data": {
+      "main": [
+        [
+          {
+            "node": "Extract Google Docs Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Google Docs Link": {
+      "main": [
+        [
+          {
+            "node": "Extract Google Doc Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Clinical Sections": {
+      "main": [
+        [
+          {
+            "node": "Classify Case Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build POGS Candidate": {
+      "main": [
+        [
+          {
+            "node": "Validate POGS Candidate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate POGS Candidate": {
+      "main": [
+        [
+          {
+            "node": "Candidate Ready?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Knowledge Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Case Type": {
+      "main": [
+        [
+          {
+            "node": "Extract Diagnosis Terms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Diagnosis Terms": {
+      "main": [
+        [
+          {
+            "node": "Map Diagnosis to POGS References",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Diagnosis to POGS References": {
+      "main": [
+        [
+          {
+            "node": "Build POGS Candidate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ping": {
+      "main": [
+        [
+          {
+            "node": "Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login": {
+      "main": [
+        [
+          {
+            "node": "Check Existing Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Patient Case Record": {
+      "main": [
+        [
+          {
+            "node": "Create Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Case": {
+      "main": [
+        [
+          {
+            "node": "Verify Created Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing Case": {
+      "main": [
+        [
+          {
+            "node": "Normalize Case Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Case Already Exists?": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Case - STOP",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Patient Case Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Case Check": {
+      "main": [
+        [
+          {
+            "node": "Case Already Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Candidate Ready?": {
+      "main": [
+        [
+          {
+            "node": "Ping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Knowledge Record": {
+      "main": [
+        [
+          {
+            "node": "Read Existing Knowledge File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledge Record to File": {
+      "main": [
+        [
+          {
+            "node": "Write Knowledge File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Created Case": {
+      "main": [
+        [
+          {
+            "node": "Build POGS Result Knowledge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build POGS Result Knowledge": {
+      "main": [
+        [
+          {
+            "node": "Result Record to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Result Record to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Google Doc Text": {
+      "main": [
+        [
+          {
+            "node": "Normalize Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Raw Case Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Raw Case Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Raw Case to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raw Case to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Data": {
+      "main": [
+        [
+          {
+            "node": "Parse Clinical Sections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Raw Case": {
+      "main": [
+        [
+          {
+            "node": "Normalize Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Raw Case File": {
+      "main": [
+        [
+          {
+            "node": "Load Raw Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Regression Summary": {
+      "main": [
+        [
+          {
+            "node": "Summary to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary to File": {
+      "main": [
+        [
+          {
+            "node": "Write Regression Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Existing Knowledge File": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Compare Knowledge Record": {
+      "main": [
+        [
+          {
+            "node": "Knowledge Record to File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Regression Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Compare Knowledge Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "e1a73f05-b441-4aab-a11e-9be1c48c9d9a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6abe633e642ac10907998aea3acf7f455b53446183e61573d9b0db9c93a612e2"
+  },
+  "nodeGroups": [],
+  "id": "ofTTyTl8AFjvPpSk",
+  "tags": []
+}
