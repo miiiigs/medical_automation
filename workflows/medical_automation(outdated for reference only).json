@@ -1,60 +1,16 @@
 {
-  "name": "medical_automation",
+  "name": "medical_automation(outdated for reference only)",
   "nodes": [
     {
       "parameters": {},
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        224,
-        -1168
+        1344,
+        -1088
       ],
       "id": "32572b83-5a3b-4740-9edd-9aec2b3f62e6",
       "name": "When clicking ‘Execute workflow’"
-    },
-    {
-      "parameters": {
-        "documentId": {
-          "__rl": true,
-          "value": "15r_HPrVzCHuPGxCrJNhDj_kFjepHKwRAdPvHovhnXIk",
-          "mode": "list",
-          "cachedResultName": "PNSS ENCODING",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15r_HPrVzCHuPGxCrJNhDj_kFjepHKwRAdPvHovhnXIk/edit?usp=drivesdk"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": 1729947860,
-          "mode": "list",
-          "cachedResultName": "July 2026",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15r_HPrVzCHuPGxCrJNhDj_kFjepHKwRAdPvHovhnXIk/edit#gid=1729947860"
-        },
-        "filtersUI": {
-          "values": []
-        },
-        "options": {
-          "dataLocationOnSheet": {
-            "values": {
-              "rangeDefinition": "specifyRangeA1",
-              "range": "A231:I232"
-            }
-          }
-        }
-      },
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
-      "position": [
-        224,
-        -1728
-      ],
-      "id": "517e238c-181a-4e50-814d-c1762ebe845f",
-      "name": "Get row(s) in sheet",
-      "notesInFlow": false,
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "w8CHG10kDhGNfouo",
-          "name": "medical_automation Google OAuth2"
-        }
-      }
     },
     {
       "parameters": {
@@ -64,7 +20,7 @@
       "typeVersion": 2,
       "position": [
         448,
-        -1408
+        -1328
       ],
       "id": "76824f54-8211-45aa-8a04-271a1f8e9194",
       "name": "Extract Google Docs Link"
@@ -80,7 +36,7 @@
       "typeVersion": 4.5,
       "position": [
         224,
-        -1408
+        -1328
       ],
       "id": "f6a73c89-e38f-41ca-b88e-b8ed4a9bd572",
       "name": "Extract Row Data",
@@ -102,8 +58,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1120,
-        -1216
+        2240,
+        -1136
       ],
       "id": "083ab847-cc3e-4c56-bd87-d0e37d7cee6a",
       "name": "Parse Clinical Sections"
@@ -116,8 +72,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2016,
-        -1216
+        3136,
+        -1136
       ],
       "id": "35485fee-8f97-4fbe-ac55-8e40157db11e",
       "name": "Build POGS Candidate"
@@ -130,8 +86,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2240,
-        -1216
+        3360,
+        -1136
       ],
       "id": "a13ba302-c259-425f-95b4-1e1bdaacac6d",
       "name": "Validate POGS Candidate"
@@ -164,8 +120,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        2464,
-        -1408
+        3584,
+        -1424
       ],
       "id": "949a0672-ca3b-411f-b34e-b3f90f0cc59f",
       "name": "Candidate Ready?"
@@ -178,8 +134,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1344,
-        -1216
+        2464,
+        -1136
       ],
       "id": "da293466-239d-4916-9ff2-31e2c73bfd3b",
       "name": "Classify Case Type"
@@ -192,8 +148,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1568,
-        -1216
+        2688,
+        -1136
       ],
       "id": "3cae945f-47ee-4806-bc2e-05718df98273",
       "name": "Extract Diagnosis Terms"
@@ -206,8 +162,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1792,
-        -1216
+        2912,
+        -1136
       ],
       "id": "a43c59a4-8214-496c-8137-580261a238df",
       "name": "Map Diagnosis to POGS References"
@@ -220,8 +176,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2688,
-        -1408
+        3808,
+        -1424
       ],
       "id": "bd912049-744f-42fd-8c6d-31f818dccbe1",
       "name": "Ping"
@@ -247,8 +203,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2912,
-        -1408
+        4032,
+        -1424
       ],
       "id": "478d5108-1360-46c1-a934-3c47edc464c6",
       "name": "Login"
@@ -278,8 +234,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        4192,
-        -1312
+        4928,
+        -1328
       ],
       "id": "a5a22c5c-f077-46f0-a900-8270163b84a2",
       "name": "Create Patient Case Record"
@@ -309,8 +265,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        4416,
-        -1312
+        5152,
+        -1328
       ],
       "id": "22e975d8-ad5d-4b1f-9a3a-d7f8ba021c82",
       "name": "Create Case"
@@ -341,8 +297,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        3136,
-        -1408
+        4256,
+        -1424
       ],
       "id": "8ca69ced-ffd8-4fb9-b878-3dec186287c9",
       "name": "Check Existing Case",
@@ -376,8 +332,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        3584,
-        -1408
+        4704,
+        -1424
       ],
       "id": "0cc0ac5f-4d23-4e47-9ff5-bedc865510a3",
       "name": "Case Already Exists?"
@@ -389,8 +345,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3360,
-        -1408
+        4480,
+        -1424
       ],
       "id": "c0191010-db0c-4634-a242-e4bfa5a3078d",
       "name": "Normalize Case Check"
@@ -404,8 +360,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        3808,
-        -1504
+        4928,
+        -1520
       ],
       "id": "a38d966d-b97b-458d-a719-083019c1b646",
       "name": "Duplicate Case - STOP"
@@ -427,8 +383,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        4640,
-        -1312
+        5376,
+        -1328
       ],
       "id": "64b08050-b0e9-4da4-b9d8-c3082aa37eb0",
       "name": "Verify Created Case"
@@ -441,8 +397,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2464,
-        -1120
+        3584,
+        -1040
       ],
       "id": "596ac9c5-e119-4b17-8dbf-ea95b32b09c1",
       "name": "Build Knowledge Record"
@@ -455,8 +411,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3520,
-        -1216
+        4480,
+        -1232
       ],
       "id": "8348b2b9-c956-44c1-ab25-c3ae1bdef764",
       "name": "Knowledge Record to File"
@@ -468,8 +424,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4864,
-        -1312
+        5600,
+        -1328
       ],
       "id": "ef2bf0ec-f7aa-498a-993a-32ae8eb28195",
       "name": "Build POGS Result Knowledge"
@@ -481,8 +437,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5088,
-        -1312
+        5824,
+        -1328
       ],
       "id": "40304019-7aae-41ef-a0e0-f0f7a67640dc",
       "name": "Result Record to File"
@@ -496,8 +452,8 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
       "position": [
-        5312,
-        -1312
+        6048,
+        -1328
       ],
       "id": "5bb294b9-d769-4b57-bf87-103619ca785c",
       "name": "Read/Write Files from Disk1"
@@ -511,8 +467,8 @@
       "type": "n8n-nodes-base.googleDocs",
       "typeVersion": 2,
       "position": [
-        672,
-        -1408
+        1792,
+        -1328
       ],
       "id": "064116e9-77eb-4c11-b77c-f29835266d94",
       "name": "Extract Google Doc Text",
@@ -526,13 +482,13 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const doc = $json;\n\nconst documentId =\n  $node[\"Extract Google Doc Text\"].json.documentId;\n\nif (!documentId) {\n  throw new Error(\"Missing Google documentId\");\n}\n\nfunction stableHash(value) {\n  const str = String(value);\n\n  let hash1 = 0xdeadbeef;\n  let hash2 = 0x41c6ce57;\n\n  for (let i = 0; i < str.length; i++) {\n    const ch = str.charCodeAt(i);\n\n    hash1 = Math.imul(hash1 ^ ch, 2654435761);\n    hash2 = Math.imul(hash2 ^ ch, 1597334677);\n  }\n\n  hash1 =\n    Math.imul(hash1 ^ (hash1 >>> 16), 2246822507) ^\n    Math.imul(hash2 ^ (hash2 >>> 13), 3266489909);\n\n  hash2 =\n    Math.imul(hash2 ^ (hash2 >>> 16), 2246822507) ^\n    Math.imul(hash1 ^ (hash1 >>> 13), 3266489909);\n\n  return (\n    (hash2 >>> 0).toString(16).padStart(8, \"0\") +\n    (hash1 >>> 0).toString(16).padStart(8, \"0\")\n  );\n}\n\nconst rawCaseId =\n  `RAW-DOC-${stableHash(documentId)}`;\n\nreturn {\n  json: {\n    schemaVersion: 4,\n\n    rawCaseId,\n\n    capturedAt:\n      new Date().toISOString(),\n\n    executionId:\n      $execution?.id ?? null,\n\n    source: {\n      documentId,\n      title:\n        doc.title ?? null\n    },\n\n    googleDoc:\n      doc\n  }\n};"
+        "jsCode": "const doc = $json;\n\nconst documentId = doc.documentId;\n\nif (!documentId) {\n  throw new Error(\n    \"Missing Google documentId\"\n  );\n}\n\nfunction stableHash(value) {\n  const str = String(value);\n\n  let hash1 = 0xdeadbeef;\n  let hash2 = 0x41c6ce57;\n\n  for (let i = 0; i < str.length; i++) {\n    const ch = str.charCodeAt(i);\n\n    hash1 =\n      Math.imul(\n        hash1 ^ ch,\n        2654435761\n      );\n\n    hash2 =\n      Math.imul(\n        hash2 ^ ch,\n        1597334677\n      );\n  }\n\n  hash1 =\n    Math.imul(\n      hash1 ^ (hash1 >>> 16),\n      2246822507\n    ) ^\n    Math.imul(\n      hash2 ^ (hash2 >>> 13),\n      3266489909\n    );\n\n  hash2 =\n    Math.imul(\n      hash2 ^ (hash2 >>> 16),\n      2246822507\n    ) ^\n    Math.imul(\n      hash1 ^ (hash1 >>> 13),\n      3266489909\n    );\n\n  return (\n    (hash2 >>> 0)\n      .toString(16)\n      .padStart(8, \"0\")\n    +\n    (hash1 >>> 0)\n      .toString(16)\n      .padStart(8, \"0\")\n  );\n}\n\nconst rawCaseId =\n  `RAW-DOC-${stableHash(documentId)}`;\n\nreturn {\n  json: {\n    rawCaseId,\n    documentId,\n    capturedAt:\n      new Date().toISOString(),\n    googleDoc: doc\n  }\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        896,
-        -1456
+        2016,
+        -1376
       ],
       "id": "ac4c9e3b-e1bc-4403-b16f-0ba7d3063972",
       "name": "Build Raw Case Snapshot"
@@ -540,31 +496,16 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const record = $json;\n\nconst content =\n  JSON.stringify(record, null, 2);\n\nreturn {\n  json: {\n    rawCaseId:\n      record.rawCaseId,\n\n    fileName:\n      `${record.rawCaseId}.json`\n  },\n\n  binary: {\n    data: {\n      data:\n        Buffer\n          .from(content, \"utf8\")\n          .toString(\"base64\"),\n\n      mimeType:\n        \"application/json\",\n\n      fileName:\n        `${record.rawCaseId}.json`\n    }\n  }\n};"
+        "jsCode": "const record = $json;\n\nconst content =\n  JSON.stringify(\n    record,\n    null,\n    2\n  );\n\nreturn {\n  json: {\n    rawCaseId:\n      record.rawCaseId,\n\n    fileName:\n      `${record.rawCaseId}.json`\n  },\n\n  binary: {\n    data: {\n      data:\n        Buffer.from(\n          content,\n          \"utf8\"\n        )\n        .toString(\"base64\"),\n\n      mimeType:\n        \"application/json\",\n\n      fileName:\n        `${record.rawCaseId}.json`\n    }\n  }\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1120,
-        -1456
+        2240,
+        -1376
       ],
       "id": "bd393fbf-79cf-41b8-bf56-816e65e46107",
       "name": "Raw Case to File"
-    },
-    {
-      "parameters": {
-        "operation": "write",
-        "fileName": "={{ \"/data/cases/raw_cases/\" + $json.fileName }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.readWriteFile",
-      "typeVersion": 1.1,
-      "position": [
-        1344,
-        -1456
-      ],
-      "id": "da2c58e5-8f4d-42e1-88e6-44a3be01a6db",
-      "name": "Read/Write Files from Disk2"
     },
     {
       "parameters": {
@@ -574,8 +515,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        896,
-        -1216
+        2016,
+        -1136
       ],
       "id": "f3f961ba-a69a-46ec-a115-6166fac56857",
       "name": "Normalize Data"
@@ -587,25 +528,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        672,
-        -1168
+        1792,
+        -1088
       ],
       "id": "87aeecfe-99f5-4033-8da1-e279cfc60dfe",
       "name": "Load Raw Case"
-    },
-    {
-      "parameters": {
-        "fileSelector": "/data/cases/raw_cases/*.json",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.readWriteFile",
-      "typeVersion": 1.1,
-      "position": [
-        448,
-        -1168
-      ],
-      "id": "13ae1f84-927a-4a4f-b4c9-d2f8d1cf6ae7",
-      "name": "Read Raw Case File"
     },
     {
       "parameters": {
@@ -614,8 +541,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3520,
-        -1024
+        4480,
+        -944
       ],
       "id": "ac5388a5-e4a6-4d57-85f3-35cccc2cc0bb",
       "name": "Regression Summary"
@@ -627,8 +554,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3744,
-        -1024
+        4704,
+        -1040
       ],
       "id": "78374d4d-f15a-4ae2-a368-edcfd86d6bcf",
       "name": "Summary to File"
@@ -642,8 +569,8 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
       "position": [
-        3968,
-        -1024
+        4928,
+        -1040
       ],
       "id": "a5cf59fa-b620-4cb2-8d0d-19d9fa054ebc",
       "name": "Write Regression Report"
@@ -656,8 +583,8 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
       "position": [
-        2624,
-        -864
+        3808,
+        -960
       ],
       "id": "6cb86f34-87ff-49e9-bdd1-33f1340891c3",
       "name": "Read Existing Knowledge File",
@@ -667,13 +594,13 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const current = $json;\n\nif (!current?.knowledgeId) {\n  throw new Error(\n    \"Current knowledge record is missing knowledgeId\"\n  );\n}\n\n\n// --------------------------------------------------\n// Load previous knowledge record if one exists\n// --------------------------------------------------\n\nlet previous = null;\n\nconst binaryKeys =\n  Object.keys($binary ?? {});\n\nif (binaryKeys.length > 0) {\n\n  try {\n\n    const binaryProperty =\n      binaryKeys[0];\n\n    const buffer =\n  await this.helpers.getBinaryDataBuffer(\n    $itemIndex,\n    binaryProperty\n  );\n    const text =\n      buffer.toString(\"utf8\");\n\n    previous =\n      JSON.parse(text);\n\n  } catch (error) {\n\n    previous = null;\n\n  }\n}\n\n\n// --------------------------------------------------\n// Normalize objects before comparing\n// Ignore fields that naturally change every run\n// --------------------------------------------------\n\nfunction comparable(record) {\n\n  if (!record) return null;\n\n  const copy =\n    JSON.parse(\n      JSON.stringify(record)\n    );\n\n  delete copy.lastUpdatedAt;\n  delete copy.timestamp;\n  delete copy.executionId;\n  delete copy.capturedAt;\n  delete copy.runContext;\n  return copy;\n}\n\n\n// --------------------------------------------------\n// Useful numeric metrics\n// --------------------------------------------------\n\nfunction metrics(record) {\n\n  return {\n\n    mapped:\n      record?.mappingCoverage\n        ?.mappedTerms ?? 0,\n\n    unresolved:\n      record?.mappingCoverage\n        ?.unresolvedTerms ?? 0,\n\n    issues:\n      record?.validation\n        ?.issues?.length ?? 0,\n\n    warnings:\n      record?.validation\n        ?.warnings?.length ?? 0,\n\n    unsatisfiedRules:\n      record?.ruleStatus\n        ?.unsatisfiedRequiredRules\n        ?.length ?? 0,\n\n    unknownFields:\n      record?.discovery\n        ?.unknownTopLevelFields\n        ?.length ?? 0,\n\n    readyForPOGS:\n      record?.validation\n        ?.readyForPOGS ?? false\n\n  };\n}\n\n\nconst currentMetrics =\n  metrics(current);\n\nconst previousMetrics =\n  previous\n    ? metrics(previous)\n    : null;\n\n\n// --------------------------------------------------\n// Determine change status\n// --------------------------------------------------\n\nlet status = \"NEW\";\n\nif (previous) {\n\n  const same =\n    JSON.stringify(\n      comparable(previous)\n    ) ===\n    JSON.stringify(\n      comparable(current)\n    );\n\n  if (same) {\n\n    status = \"UNCHANGED\";\n\n  } else {\n\n    let improvementScore = 0;\n    let regressionScore = 0;\n\n\n    // Fewer unresolved mappings = improvement\n    if (\n      currentMetrics.unresolved <\n      previousMetrics.unresolved\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.unresolved >\n      previousMetrics.unresolved\n    ) {\n      regressionScore++;\n    }\n\n\n    // More mapped terms = improvement\n    if (\n      currentMetrics.mapped >\n      previousMetrics.mapped\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.mapped <\n      previousMetrics.mapped\n    ) {\n      regressionScore++;\n    }\n\n\n    // Fewer validation issues = improvement\n    if (\n      currentMetrics.issues <\n      previousMetrics.issues\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.issues >\n      previousMetrics.issues\n    ) {\n      regressionScore++;\n    }\n\n\n    // Fewer unsatisfied rules = improvement\n    if (\n      currentMetrics.unsatisfiedRules <\n      previousMetrics.unsatisfiedRules\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.unsatisfiedRules >\n      previousMetrics.unsatisfiedRules\n    ) {\n      regressionScore++;\n    }\n\n\n    // Fewer unknown fields = improvement\n    if (\n      currentMetrics.unknownFields <\n      previousMetrics.unknownFields\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.unknownFields >\n      previousMetrics.unknownFields\n    ) {\n      regressionScore++;\n    }\n\n\n    // Becoming POGS-ready is improvement\n    if (\n      currentMetrics.readyForPOGS === true &&\n      previousMetrics.readyForPOGS === false\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.readyForPOGS === false &&\n      previousMetrics.readyForPOGS === true\n    ) {\n      regressionScore++;\n    }\n\n\n    if (\n      improvementScore > 0 &&\n      regressionScore === 0\n    ) {\n\n      status = \"IMPROVED\";\n\n    } else if (\n      regressionScore > 0 &&\n      improvementScore === 0\n    ) {\n\n      status = \"REGRESSED\";\n\n    } else {\n\n      status = \"CHANGED\";\n\n    }\n  }\n}\n\n\n// --------------------------------------------------\n// Build specific differences\n// --------------------------------------------------\n\nconst changes = [];\n\nif (previousMetrics) {\n\n  for (\n    const field of Object.keys(currentMetrics)\n  ) {\n\n    const before =\n      previousMetrics[field];\n\n    const after =\n      currentMetrics[field];\n\n    if (\n      JSON.stringify(before) !==\n      JSON.stringify(after)\n    ) {\n\n      changes.push({\n        field,\n        before,\n        after\n      });\n\n    }\n  }\n}\n\n\nreturn {\n  json: {\n\n    knowledgeId:\n      current.knowledgeId,\n\n    regressionResult: {\n\n      status,\n\n      hadPreviousRecord:\n        Boolean(previous),\n\n      previousMetrics,\n\n      currentMetrics,\n\n      changes\n\n    },\n\n    currentRecord:\n      current\n\n  }\n};"
+        "jsCode": "function comparable(record) {\n\n  if (!record) return null;\n\n  const copy =\n    JSON.parse(\n      JSON.stringify(record)\n    );\n\n  // Execution metadata - never affects semantic meaning\n  delete copy.runContext;\n\n  delete copy.lastUpdatedAt;\n  delete copy.timestamp;\n  delete copy.executionId;\n  delete copy.capturedAt;\n\n  // Optional transport/file metadata\n  delete copy.fileName;\n  delete copy.filePath;\n  delete copy.mimeType;\n\n  return copy;\n}"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3296,
-        -1120
+        4256,
+        -1040
       ],
       "id": "ed0e1a9e-eb09-4d9a-9d90-78b55275949f",
       "name": "Compare Knowledge Record"
@@ -687,8 +614,8 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
       "position": [
-        3744,
-        -1216
+        4704,
+        -1232
       ],
       "id": "4a31e3b0-86b9-4026-bc30-3c7604094fbd",
       "name": "Write Knowledge File"
@@ -702,11 +629,174 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        2912,
-        -1120
+        4032,
+        -1040
       ],
       "id": "d9818984-4173-4871-8cc0-bbf40fb7f10a",
       "name": "Merge"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $json;\n\nconst documentId =\n  data.documentId;\n\nif (!documentId) {\n  throw new Error(\n    \"Missing Google documentId\"\n  );\n}\n\n// Google document IDs should only contain characters\n// safe for deterministic local identity generation.\nif (\n  !/^[A-Za-z0-9_-]+$/.test(documentId)\n) {\n  throw new Error(\n    \"Unexpected Google documentId format\"\n  );\n}\n\nfunction stableHash(value) {\n  const str =\n    String(value);\n\n  let hash1 =\n    0xdeadbeef;\n\n  let hash2 =\n    0x41c6ce57;\n\n  for (\n    let i = 0;\n    i < str.length;\n    i++\n  ) {\n    const ch =\n      str.charCodeAt(i);\n\n    hash1 =\n      Math.imul(\n        hash1 ^ ch,\n        2654435761\n      );\n\n    hash2 =\n      Math.imul(\n        hash2 ^ ch,\n        1597334677\n      );\n  }\n\n  hash1 =\n    Math.imul(\n      hash1 ^ (hash1 >>> 16),\n      2246822507\n    ) ^\n    Math.imul(\n      hash2 ^ (hash2 >>> 13),\n      3266489909\n    );\n\n  hash2 =\n    Math.imul(\n      hash2 ^ (hash2 >>> 16),\n      2246822507\n    ) ^\n    Math.imul(\n      hash1 ^ (hash1 >>> 13),\n      3266489909\n    );\n\n  return (\n    (hash2 >>> 0)\n      .toString(16)\n      .padStart(8, \"0\")\n    +\n    (hash1 >>> 0)\n      .toString(16)\n      .padStart(8, \"0\")\n  );\n}\n\nconst rawCaseId =\n  `RAW-DOC-${stableHash(documentId)}`;\n\nreturn {\n  json: {\n    ...data,\n\n    rawCaseId,\n\n    rawCaseFileName:\n      `${rawCaseId}.json`\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        -1328
+      ],
+      "id": "2eb05a36-7c46-40a2-83e2-a1b40ac1f613",
+      "name": "Build Raw Case Identity"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cb6c1f5a-b4ab-4eaf-9335-6ee8d9de012a",
+              "leftValue": "={{ $json.rawCaseExists }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1568,
+        -1328
+      ],
+      "id": "d0d332e6-5c47-4cd1-88c3-040bffab989b",
+      "name": "Raw Case Already Exists?"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ \"/data/cases/raw_cases/new/\" + $json.fileName }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        2464,
+        -1376
+      ],
+      "id": "da2c58e5-8f4d-42e1-88e6-44a3be01a6db",
+      "name": "Write Raw Case"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Regression Summary should provide exactly one item.\nconst summaryItems =\n  $input.all();\n\nif (summaryItems.length === 0) {\n  throw new Error(\n    \"Regression Summary produced no output\"\n  );\n}\n\nconst regression =\n  summaryItems[0].json;\n\n\n// --------------------------------------------------\n// Get the exact knowledge records used in this\n// regression run.\n//\n// Compare Knowledge Record already contains the\n// current knowledge record for each case.\n// --------------------------------------------------\n\nconst compareItems =\n  $items(\n    \"Compare Knowledge Record\"\n  );\n\nif (compareItems.length === 0) {\n  throw new Error(\n    \"No Compare Knowledge Record items found\"\n  );\n}\n\n\nconst knowledge = [];\n\nfor (const item of compareItems) {\n  const record =\n    item.json.currentRecord ??\n    null;\n\n  if (!record) {\n    throw new Error(\n      \"Compare Knowledge Record item is missing currentRecord\"\n    );\n  }\n\n  if (!record.knowledgeId) {\n    throw new Error(\n      \"Knowledge record is missing knowledgeId\"\n    );\n  }\n\n  const cleanRecord = {\n    ...record\n  };\n  \n  delete cleanRecord.mimeType;\n  delete cleanRecord.fileType;\n  delete cleanRecord.fileName;\n  delete cleanRecord.fileExtension;\n  delete cleanRecord.fileSize;\n  \n  knowledge.push(\n    cleanRecord\n  );\n}\n\n\n// --------------------------------------------------\n// Deterministic ordering.\n//\n// This makes bundles easier to diff between runs.\n// --------------------------------------------------\n\nknowledge.sort(\n  (a, b) =>\n    String(a.knowledgeId)\n      .localeCompare(\n        String(b.knowledgeId)\n      )\n);\n\n\n// --------------------------------------------------\n// Use the regression timestamp as the run identity.\n// --------------------------------------------------\n\nconst generatedAt =\n  regression.generatedAt ??\n  new Date().toISOString();\n\nconst regressionRunId =\n  `REG-${generatedAt\n    .replace(/[-:.]/g, \"\")\n    .replace(\"T\", \"-\")\n    .replace(\"Z\", \"\")}`;\n\n\n// --------------------------------------------------\n// Final evidence bundle.\n//\n// IMPORTANT:\n// This contains sanitized knowledge records,\n// not raw Google Docs / PHI.\n// --------------------------------------------------\n\nreturn [\n  {\n    json: {\n      schemaVersion: \"1.0\",\n\n      artifactType:\n        \"regression-evidence-bundle\",\n\n      regressionRunId,\n\n      generatedAt,\n\n      knowledgeFileCount:\n        knowledge.length,\n\n      knowledge,\n\n      regression\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4704,
+        -848
+      ],
+      "id": "e5bc6738-7fd2-4076-bb03-0f001849e0cc",
+      "name": "Build Regression Evidence Bundle"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const bundle =\n  $json;\n\nif (!bundle.regressionRunId) {\n  throw new Error(\n    \"Missing regressionRunId\"\n  );\n}\n\nconst fileName =\n  `${bundle.regressionRunId}.json`;\n\nconst content =\n  JSON.stringify(\n    bundle,\n    null,\n    2\n  );\n\nreturn {\n  json: {\n    regressionRunId:\n      bundle.regressionRunId,\n\n    generatedAt:\n      bundle.generatedAt,\n\n    knowledgeFileCount:\n      bundle.knowledgeFileCount,\n\n    fileName\n  },\n\n  binary: {\n    data: {\n      data:\n        Buffer.from(\n          content,\n          \"utf8\"\n        ).toString(\n          \"base64\"\n        ),\n\n      mimeType:\n        \"application/json\",\n\n      fileName\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4928,
+        -848
+      ],
+      "id": "2ee31f05-8a11-4bf2-af16-9b109ef23da3",
+      "name": "Regression Evidence Bundle to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ \"/data/logs/regression_runs/\" + $json.fileName }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        5152,
+        -848
+      ],
+      "id": "d1c63f87-caa2-433f-b5b7-02f3b545e4f0",
+      "name": "Write Regression Evidence Bundle"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{   \"/data/cases/raw_cases/*/\" +   $json.rawCaseId +   \".json\" }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        -1392
+      ],
+      "id": "aaca089b-08b0-44fa-bcaa-b546ac9c94f9",
+      "name": "Read Raw Case Matches",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const item = $json;\n\nconst rawCaseExists =\n  Boolean(item.fileName) &&\n  !item.error;\n\nreturn {\n  json: {\n    rawCaseExists,\n    matchedFileName:\n      rawCaseExists\n        ? item.fileName\n        : null\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -1392
+      ],
+      "id": "ec1a3986-9657-4da8-9b5a-30480a3974b9",
+      "name": "Normalize Raw Case Check"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1344,
+        -1328
+      ],
+      "id": "e540b767-1479-4974-b210-4fccc52a4961",
+      "name": "Merge Raw Case Check Data"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/data/cases/raw_cases/new/*.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1568,
+        -1088
+      ],
+      "id": "13ae1f84-927a-4a4f-b4c9-d2f8d1cf6ae7",
+      "name": "Read New Raw Case File"
     }
   ],
   "pinData": {},
@@ -715,16 +805,11 @@
       "main": [
         [
           {
-            "node": "Read Raw Case File",
+            "node": "Read New Raw Case File",
             "type": "main",
             "index": 0
           }
         ]
-      ]
-    },
-    "Get row(s) in sheet": {
-      "main": [
-        []
       ]
     },
     "Extract Row Data": {
@@ -742,7 +827,7 @@
       "main": [
         [
           {
-            "node": "Extract Google Doc Text",
+            "node": "Build Raw Case Identity",
             "type": "main",
             "index": 0
           }
@@ -1006,7 +1091,7 @@
       "main": [
         [
           {
-            "node": "Read/Write Files from Disk2",
+            "node": "Write Raw Case",
             "type": "main",
             "index": 0
           }
@@ -1035,20 +1120,14 @@
         ]
       ]
     },
-    "Read Raw Case File": {
-      "main": [
-        [
-          {
-            "node": "Load Raw Case",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Regression Summary": {
       "main": [
         [
+          {
+            "node": "Build Regression Evidence Bundle",
+            "type": "main",
+            "index": 0
+          },
           {
             "node": "Summary to File",
             "type": "main",
@@ -1105,6 +1184,100 @@
           }
         ]
       ]
+    },
+    "Build Raw Case Identity": {
+      "main": [
+        [
+          {
+            "node": "Read Raw Case Matches",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Raw Case Check Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Raw Case Already Exists?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Extract Google Doc Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Regression Evidence Bundle": {
+      "main": [
+        [
+          {
+            "node": "Regression Evidence Bundle to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Regression Evidence Bundle to File": {
+      "main": [
+        [
+          {
+            "node": "Write Regression Evidence Bundle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Raw Case Matches": {
+      "main": [
+        [
+          {
+            "node": "Normalize Raw Case Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Raw Case Check": {
+      "main": [
+        [
+          {
+            "node": "Merge Raw Case Check Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Raw Case Check Data": {
+      "main": [
+        [
+          {
+            "node": "Raw Case Already Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read New Raw Case File": {
+      "main": [
+        [
+          {
+            "node": "Load Raw Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -1113,7 +1286,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "e1a73f05-b441-4aab-a11e-9be1c48c9d9a",
+  "versionId": "6bb756a2-ee71-4898-8aaa-6b125ede6bd1",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "6abe633e642ac10907998aea3acf7f455b53446183e61573d9b0db9c93a612e2"

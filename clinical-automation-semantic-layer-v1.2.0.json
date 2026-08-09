@@ -1,0 +1,717 @@
+{
+  "schemaVersion": "1.2.0",
+  "artifactType": "clinical-automation-semantic-layer",
+  "status": "ACTIVE_DRAFT",
+  "createdAt": "2026-08-09T17:20:00Z",
+  "purpose": {
+    "summary": "Canonical interpretation layer for the local clinical automation pipeline.",
+    "intendedUse": [
+      "Define canonical entities, fields, meanings, and relationships.",
+      "Define deterministic classification, mapping, validation, and routing rules.",
+      "Separate confirmed rules from deferred, unresolved, or provisional behavior.",
+      "Provide a source of truth for future parser, mapper, validator, regression, and POGS-integration changes."
+    ],
+    "notFor": [
+      "Raw patient data storage",
+      "Patient-level clinical narratives",
+      "Credentials, tokens, passwords, or OAuth configuration",
+      "Speculative clinical inference",
+      "POGS cloud submission automation"
+    ]
+  },
+  "governance": {
+    "folderStateIsAuthoritative": true,
+    "rawJsonContainsLifecycleState": false,
+    "humanReviewRequiredBeforeCompleted": true,
+    "pogSCloudSubmissionAutomated": false,
+    "regressionMayWriteToPOGS": false,
+    "unconfirmedPogsReferenceIdsMayBeGuessed": false,
+    "changePolicy": {
+      "rule": "Changes to canonical mappings, required-field rules, schema meanings, or routing behavior should be validated against regression evidence before promotion.",
+      "promotionStates": [
+        "PROPOSED",
+        "CONFIRMED",
+        "DEFERRED",
+        "REJECTED"
+      ]
+    }
+  },
+  "entities": {
+    "RawCase": {
+      "description": "Local source-oriented snapshot of one Google Docs clinical case.",
+      "identity": "rawCaseId",
+      "canonicalFields": {
+        "rawCaseId": {
+          "type": "string",
+          "required": true,
+          "meaning": "Stable pseudonymous local identity derived deterministically from Google documentId.",
+          "examplePattern": "RAW-DOC-<stable-id>"
+        },
+        "documentId": {
+          "type": "string",
+          "required": true,
+          "meaning": "Google Docs source identity. Sensitive operational identifier; do not place in shareable semantic artifacts."
+        },
+        "capturedAt": {
+          "type": "string",
+          "format": "date-time",
+          "required": true
+        },
+        "googleDoc": {
+          "type": "object",
+          "required": true,
+          "meaning": "Raw Google Docs API response. May contain PHI and remains local."
+        }
+      },
+      "forbiddenLifecycleFields": [
+        "status",
+        "lifecycle",
+        "manualReview",
+        "automationResult"
+      ]
+    },
+    "ParsedCase": {
+      "description": "Normalized deterministic extraction from RawCase.",
+      "canonicalSections": {
+        "patient": [
+          "name",
+          "hospitalNumber",
+          "address",
+          "birthDate",
+          "age",
+          "sex"
+        ],
+        "admission": [
+          "date",
+          "time",
+          "dischargeDate"
+        ],
+        "obstetric": [
+          "gravida",
+          "para",
+          "fullTerm",
+          "preterm",
+          "abortion",
+          "living"
+        ],
+        "medicalHistory": [
+          "chronicHypertension",
+          "diabetesMellitus",
+          "bronchialAsthma",
+          "thyroidDisease"
+        ],
+        "vitals": [
+          "bloodPressure",
+          "heartRate",
+          "respiratoryRate",
+          "oxygenSaturation",
+          "temperatureC"
+        ],
+        "measurements": [
+          "weightKg",
+          "heightCm"
+        ],
+        "sections": [
+          "reasonForAdmission",
+          "historyOfPresentIllness",
+          "finalDiagnosis",
+          "courseInWard"
+        ]
+      },
+      "dateParsing": {
+        "acceptedBirthLabels": [
+          "Birthday",
+          "Birthdate",
+          "Birth Date",
+          "Date of Birth",
+          "DOB"
+        ],
+        "acceptedObservedFormats": [
+          "M/D/YYYY",
+          "MM/DD/YYYY",
+          "M-D-YYYY",
+          "MM-DD-YYYY"
+        ],
+        "normalizedParserFormat": "MM/DD/YYYY",
+        "pogsCandidateFormat": "YYYY-MM-DD",
+        "status": "CONFIRMED"
+      }
+    },
+    "POGSCandidate": {
+      "description": "Structured object prepared for local POGS validation/write logic.",
+      "canonicalFields": [
+        "caseNum",
+        "birthDate",
+        "admissionDate",
+        "room",
+        "weight",
+        "height",
+        "isPregnancy",
+        "isGyne",
+        "isPostpartum",
+        "obscoreG",
+        "obscoreP",
+        "obscoreFT",
+        "obscorePr",
+        "obscoreAb",
+        "obscoreLB",
+        "gynecologicalDiagnosis",
+        "unresolvedDiagnoses",
+        "ignoredDiagnosisTerms",
+        "classificationEvidence",
+        "source",
+        "runContext"
+      ]
+    },
+    "KnowledgeRecord": {
+      "description": "Sanitized semantic/regression representation of one processed case.",
+      "mustNotContain": [
+        "patientName",
+        "address",
+        "fullHPI",
+        "fullFinalDiagnosisNarrative",
+        "rawGoogleDoc",
+        "OAuthToken",
+        "JWT",
+        "password"
+      ],
+      "canonicalTopLevelFields": [
+        "knowledgeId",
+        "classification",
+        "extracted",
+        "mapped",
+        "unresolved",
+        "ignored",
+        "mappingCoverage",
+        "mappingStatus",
+        "ruleEvaluation",
+        "ruleStatus",
+        "validation",
+        "discovery",
+        "runContext"
+      ]
+    },
+    "RegressionEvidenceBundle": {
+      "description": "Historical regression artifact containing the sanitized knowledge records and regression summary from the same run.",
+      "canonicalFields": [
+        "schemaVersion",
+        "artifactType",
+        "regressionRunId",
+        "generatedAt",
+        "knowledgeFileCount",
+        "knowledge",
+        "regression"
+      ],
+      "artifactTypeValue": "regression-evidence-bundle",
+      "purpose": "Primary shareable evidence artifact for reviewing parser/mapping/rule behavior without raw PHI."
+    }
+  },
+  "rawCaseFolderSemantics": {
+    "root": "/data/cases/raw_cases",
+    "invariant": "A rawCaseId must exist in exactly one workflow folder at a time.",
+    "folders": {
+      "new": {
+        "meaning": "Discovered and archived; automated processing has not successfully completed.",
+        "entryRule": "Every unseen Google document is first written here."
+      },
+      "for_checking": {
+        "meaning": "Automation and local POGS processing/verification succeeded; manual review is required.",
+        "entryRule": "Move here only after successful local POGS processing and verification.",
+        "humanMayMoveTo": [
+          "completed",
+          "gaps"
+        ]
+      },
+      "gaps": {
+        "meaning": "Blocking automated issue or human-detected error, ambiguity, missing value, unsupported rule, or incorrect result requires investigation.",
+        "entryRule": "Automation failure or manual rejection."
+      },
+      "completed": {
+        "meaning": "Human-reviewed and accepted. Ready for the existing POGS/cloud submission process.",
+        "entryRule": "Manual review only."
+      }
+    },
+    "deduplication": {
+      "checkFolders": [
+        "new",
+        "for_checking",
+        "gaps",
+        "completed"
+      ],
+      "ifFound": "Do not create a new raw file.",
+      "ifNotFound": "Create exactly one raw file in new."
+    }
+  },
+  "classification": {
+    "fields": {
+      "isPregnancy": {
+        "type": "boolean|null",
+        "meaning": "Deterministic current-pregnancy classification."
+      },
+      "isGyne": {
+        "type": "boolean|null",
+        "meaning": "Deterministic gynecologic-case classification."
+      },
+      "isPostpartum": {
+        "type": "boolean|null",
+        "meaning": "Deterministic postpartum classification."
+      }
+    },
+    "rules": {
+      "classificationMustBeExplicit": true,
+      "neitherPregnancyNorGyneIsBlocking": true,
+      "evidenceShouldBeRetained": true,
+      "mixedPregnancyGyne": {
+        "allowed": true,
+        "status": "CONFIRMED_BEHAVIOR",
+        "meaning": "A case may simultaneously satisfy current-pregnancy and gynecologic classification rules. Do not force the flags to be mutually exclusive.",
+        "readinessPolicy": "If isPregnancy is true, the pregnancy-specific blocking rule remains sufficient to keep readyForPOGS false until pregnancy validation is implemented. Gyne extraction and mapping may still be evaluated and recorded."
+      }
+    }
+  },
+  "diagnosisRecognition": {
+    "recognizedConcepts": {
+      "abnormalUterineBleeding": {
+        "canonicalLabel": "Abnormal uterine bleeding",
+        "mappingDisposition": "UNRESOLVED"
+      },
+      "submucousMyoma": {
+        "canonicalLabel": "Prolapsed submucous myoma",
+        "mappingDisposition": "MAPPED"
+      },
+      "endometrialThickening": {
+        "canonicalLabel": "Endometrial thickening",
+        "mappingDisposition": "UNRESOLVED"
+      },
+      "anemia": {
+        "canonicalLabel": "Anemia",
+        "mappingDisposition": "UNRESOLVED_NON_GYNE_DIAGNOSIS"
+      },
+      "acuteBloodLoss": {
+        "canonicalLabel": "Acute blood loss",
+        "mappingDisposition": "UNRESOLVED_NON_GYNE_DIAGNOSIS"
+      },
+      "obesity": {
+        "canonicalLabel": "Obesity",
+        "mappingDisposition": "UNRESOLVED_NON_GYNE_DIAGNOSIS"
+      },
+      "bloodTransfusion": {
+        "canonicalLabel": "Status post blood transfusion",
+        "mappingDisposition": "IGNORED_FOR_GYNE_DIAGNOSIS",
+        "role": "treatment/procedure"
+      },
+      "endometrialSampling": {
+        "canonicalLabel": "Status post ultrasound guided endometrial sampling",
+        "mappingDisposition": "IGNORED_FOR_GYNE_DIAGNOSIS",
+        "role": "procedure"
+      },
+      "dmpa": {
+        "canonicalLabel": "Status post DMPA injection",
+        "mappingDisposition": "IGNORED_FOR_GYNE_DIAGNOSIS",
+        "role": "medication/intervention"
+      }
+    }
+  },
+  "pogsReferenceMappings": {
+    "gynecologicalDiagnosis": {
+      "confirmed": [
+        {
+          "sourceConcept": "Prolapsed submucous myoma",
+          "sourceKey": "submucousMyoma",
+          "categoryId": 12,
+          "categoryMeaning": "Benign Neoplasm of the Uterus",
+          "conditionId": 114,
+          "conditionMeaning": "Leiomyoma",
+          "gyneStage": 6,
+          "storedShape": {
+            "conditionId": 114,
+            "categoryId": 12,
+            "gyneStage": 6,
+            "others": null,
+            "othersField": null
+          },
+          "status": "CONFIRMED",
+          "notes": "gyneStage 6 is treated as the POGS/frontend value used for this nonmalignant diagnosis and is not independently inferred as a literal clinical cancer stage."
+        }
+      ],
+      "explicitNonMappings": [
+        {
+          "sourceConcept": "Endometrial thickening",
+          "mustNotAutoMapTo": {
+            "conditionId": 116,
+            "conditionMeaning": "Endometrial hyperplasia, unspecified"
+          },
+          "status": "CONFIRMED",
+          "reason": "Source wording does not establish endometrial hyperplasia."
+        },
+        {
+          "sourceConcepts": [
+            "Anemia",
+            "Acute blood loss",
+            "Obesity"
+          ],
+          "mustNotTreatAs": "gynecologicalDiagnosis",
+          "status": "CONFIRMED"
+        }
+      ],
+      "unresolved": [
+        {
+          "sourceConcept": "Abnormal uterine bleeding",
+          "status": "UNRESOLVED",
+          "reason": "No exact confirmed POGS gynecologicalDiagnosis reference."
+        },
+        {
+          "sourceConcept": "Endometrial thickening",
+          "status": "UNRESOLVED",
+          "reason": "No exact confirmed source-to-POGS diagnosis mapping."
+        }
+      ]
+    }
+  },
+  "validationRules": {
+    "coreIdentifiers": {
+      "caseNum": {
+        "required": true,
+        "blocking": true
+      },
+      "birthDate": {
+        "required": true,
+        "blocking": true
+      },
+      "admissionDate": {
+        "required": true,
+        "blocking": true
+      }
+    },
+    "classification": {
+      "isPregnancy": {
+        "required": true,
+        "blocking": true
+      },
+      "isGyne": {
+        "required": true,
+        "blocking": true
+      },
+      "isPostpartum": {
+        "required": true,
+        "blocking": true
+      },
+      "neitherPregnancyNorGyne": {
+        "blocking": true,
+        "issue": "Neither pregnancy nor gyne case is selected"
+      }
+    },
+    "obstetricScore": {
+      "fields": [
+        "obscoreG",
+        "obscoreP",
+        "obscoreFT",
+        "obscorePr",
+        "obscoreAb",
+        "obscoreLB"
+      ],
+      "whenPresent": {
+        "mustBeInteger": true,
+        "minimum": 0
+      }
+    },
+    "measurements": {
+      "weight": {
+        "required": false,
+        "missingDisposition": "WARNING"
+      },
+      "height": {
+        "required": false,
+        "missingDisposition": "WARNING"
+      }
+    },
+    "gyne": {
+      "ifIsGyne": {
+        "gynecologicalDiagnosisMinimumCount": 1,
+        "blockingIfMissing": true,
+        "issue": "Gyne case has no confirmed POGS gynecologicalDiagnosis mapping"
+      },
+      "unresolvedDiagnosisTermsDisposition": "WARNING"
+    },
+    "pregnancy": {
+      "status": "DEFERRED",
+      "separateWorkflowRequired": true,
+      "temporaryBlockingRule": {
+        "if": "isPregnancy === true",
+        "issue": "Pregnancy-specific POGS validation pending",
+        "readyForPOGS": false
+      },
+      "meaning": "Pregnancy cases may parse successfully but must remain blocked until the separate pregnancy-specific rules are implemented and explicitly validated."
+    },
+    "readyForPOGS": {
+      "definition": "True only when there are zero blocking validation issues.",
+      "regressionOverride": "Even if validation is ready, REGRESSION mode must not enter the live POGS write branch."
+    }
+  },
+  "pogsIntegration": {
+    "localOnly": true,
+    "baseReachabilityFromN8n": "host.docker.internal:3000",
+    "knownOperations": [
+      "ping",
+      "login",
+      "search patient case",
+      "create patient placeholder",
+      "create local case",
+      "read local case",
+      "update local case",
+      "verify local case"
+    ],
+    "cloudSubmission": {
+      "automatedByN8n": false,
+      "boundary": "n8n must stop before the existing POGS cloud-submission action."
+    },
+    "duplicateChecking": {
+      "by": "caseNum",
+      "multiItemSafetyStatus": "NOT_YET_FULLY_VALIDATED",
+      "requiredBeforeBatchWrites": true
+    }
+  },
+  "runContexts": {
+    "LIVE": {
+      "mayEnterLocalPogsWriteBranch": "Only when validation.readyForPOGS === true"
+    },
+    "REGRESSION": {
+      "mayEnterLocalPogsWriteBranch": false,
+      "purpose": "Replay archived cases through normalization, parsing, classification, mapping, candidate building, validation, knowledge generation, and regression comparison."
+    }
+  },
+  "knowledgeSemantics": {
+    "mappingCoverage": {
+      "recognizedTerms": "mappedTerms + unresolvedTerms + ignoredTerms",
+      "mappedTerms": "Recognized terms with confirmed POGS mapping.",
+      "unresolvedTerms": "Recognized terms without a confirmed automatic mapping.",
+      "ignoredTerms": "Recognized terms intentionally excluded from the target diagnosis field."
+    },
+    "mappingStatus": {
+      "mappingComplete": "True when no recognized mapping-relevant term remains unresolved under current rules.",
+      "needsClinicalMappingReview": "True when unresolved mapping-relevant terms require review."
+    },
+    "ruleStatus": {
+      "evaluatedRules": "Number of rule-evaluation entries produced.",
+      "unsatisfiedRequiredRules": "Required applicable rules known to be unsatisfied.",
+      "needsRuleReview": "True when rule behavior needs manual/engineering review."
+    },
+    "discovery": {
+      "unknownTopLevelFields": "Unexpected knowledge-record fields not in the canonical schema.",
+      "needsMappingReview": "Discovery-level mapping review indicator.",
+      "needsRuleReview": "Discovery-level rule review indicator."
+    }
+  },
+  "regressionSemantics": {
+    "statuses": {
+      "NEW": "No previous comparable knowledge record exists.",
+      "IMPROVED": "Current result reduces known problems or improves readiness according to comparison metrics.",
+      "REGRESSED": "Current result introduces or increases known problems.",
+      "CHANGED": "Comparable semantic content changed without a classified improvement/regression.",
+      "UNCHANGED": "Comparable semantic content is stable.",
+      "UNKNOWN": "Comparison cannot be classified reliably."
+    },
+    "comparisonIgnores": [
+      "lastUpdatedAt",
+      "timestamp",
+      "executionId",
+      "capturedAt",
+      "runContext",
+      "error"
+    ],
+    "binaryReadRequirement": "Use this.helpers.getBinaryDataBuffer with the correct item index; do not assume binary item 0 for multi-item comparisons.",
+    "evidenceBundle": {
+      "artifactType": "regression-evidence-bundle",
+      "contains": [
+        "knowledge records from that run",
+        "regression summary from that run"
+      ],
+      "preferredArtifactForExternalAnalysis": true,
+      "knowledgeRecordAllowedFields": [
+        "schemaVersion",
+        "knowledgeId",
+        "timestamp",
+        "executionId",
+        "classification",
+        "runContext",
+        "extracted",
+        "mapped",
+        "unresolved",
+        "ignored",
+        "mappingCoverage",
+        "mappingStatus",
+        "ruleEvaluation",
+        "ruleStatus",
+        "validation",
+        "discovery"
+      ],
+      "stripOperationalFileMetadata": [
+        "mimeType",
+        "fileType",
+        "fileName",
+        "fileExtension",
+        "fileSize",
+        "error"
+      ],
+      "qualityRule": "Regression evidence bundles should contain semantic knowledge content and regression results only; n8n transport metadata and previous-file lookup errors must be removed before writing the bundle."
+    },
+    "intentionalPolicyTransitions": {
+      "rule": "A deliberate tightening of validation may appear as REGRESSED relative to an older permissive baseline even when the new behavior is correct.",
+      "handling": [
+        "Review whether the changed rule is intentional and represented in the semantic layer.",
+        "Do not automatically revert a safety-tightening change merely because status is REGRESSED.",
+        "After accepting the intentional policy change, use the next unchanged regression as the new behavioral baseline."
+      ]
+    },
+    "comparisonIntegrity": {
+      "rule": "Regression status must reflect semantic processing differences only. Execution context, transport metadata, read-file errors used only to detect previous-record absence, and other operational fields must not affect semantic equality.",
+      "ignoreFields": [
+        "runContext",
+        "timestamp",
+        "executionId",
+        "capturedAt",
+        "lastUpdatedAt",
+        "error",
+        "mimeType",
+        "fileType",
+        "fileName",
+        "fileExtension",
+        "fileSize"
+      ]
+    }
+  },
+  "currentEvidence": {
+    "sourceType": "sanitized regression evidence bundle plus established workflow/source reverse-engineering decisions",
+    "latestRegressionEvidence": {
+      "regressionRunId": "REG-20260809-223742988",
+      "generatedAt": "2026-08-09T22:37:42.988Z",
+      "knowledgeFileCount": 29,
+      "classificationCounts": {
+        "pregnancy": 27,
+        "gyne": 9,
+        "postpartum": 3,
+        "mixedPregnancyAndGyne": 7
+      },
+      "readiness": {
+        "readyForPOGS": 0,
+        "notReadyForPOGS": 29
+      },
+      "extractionCoverage": {
+        "missingBirthDate": 0,
+        "missingAdmissionDate": 0,
+        "missingWeight": 0,
+        "missingHeight": 1
+      },
+      "mappingEvidence": {
+        "casesWithUnresolvedTerms": 3,
+        "unresolvedOccurrences": {
+          "anemia": 3,
+          "acuteBloodLoss": 1
+        }
+      },
+      "validationEvidence": {
+        "pregnancyPendingIssues": 27,
+        "gyneMissingConfirmedMappingIssues": 9,
+        "casesWithUnsatisfiedRequiredRules": 9
+      },
+      "regressionStatusCounts": {
+        "NEW": 26,
+        "IMPROVED": 0,
+        "REGRESSED": 1,
+        "CHANGED": 2,
+        "UNCHANGED": 0,
+        "UNKNOWN": 0
+      },
+      "baselineInterpretation": "This run expands evidence to 29 cases. NEW cases dominate because many records had no prior knowledge baseline. CHANGED/REGRESSED cases must be interpreted only after execution and lookup metadata are excluded from comparison."
+    }
+  },
+  "knownGaps": [
+    {
+      "area": "pregnancy-specific POGS requirements",
+      "status": "DEFERRED",
+      "impact": "Pregnancy candidates remain not-ready until separate pregnancy-specific validation is implemented.",
+      "latestEvidence": "27 of 29 current cases are classified pregnancy and are blocked by the pending pregnancy rule."
+    },
+    {
+      "area": "Abnormal uterine bleeding mapping",
+      "status": "UNRESOLVED"
+    },
+    {
+      "area": "Endometrial thickening mapping",
+      "status": "UNRESOLVED"
+    },
+    {
+      "area": "live POGS multi-item identity safety",
+      "status": "REQUIRED_BEFORE_BATCH_WRITES"
+    },
+    {
+      "area": "raw-case folder refactor",
+      "status": "IN_PROGRESS",
+      "targetFolders": [
+        "new",
+        "for_checking",
+        "gaps",
+        "completed"
+      ]
+    },
+    {
+      "area": "additional gyne POGS mappings",
+      "status": "HIGH_PRIORITY",
+      "impact": "Current run contains 9 gyne-classified cases with no confirmed gynecologicalDiagnosis mapping.",
+      "rule": "Do not guess POGS reference IDs; confirm mappings from POGS source/reference behavior before promotion."
+    },
+    {
+      "area": "mixed pregnancy and gyne classification",
+      "status": "CONFIRMED_BEHAVIOR",
+      "impact": "Seven current cases are classified both pregnancy and gyne. Dual classification is allowed; pregnancy blocking still controls readiness until pregnancy validation exists."
+    },
+    {
+      "area": "regression lookup error metadata",
+      "status": "FIX_REQUIRED",
+      "impact": "Many new knowledge records contain an operational 'error: No file(s) found' field from previous-knowledge lookup. This is not semantic data and must be stripped from comparison and evidence bundles."
+    },
+    {
+      "area": "height extraction coverage",
+      "status": "MONITOR",
+      "impact": "One of 29 cases lacks extracted height. Height remains non-blocking and produces a warning."
+    }
+  ],
+  "sourcePriority": [
+    {
+      "priority": 1,
+      "source": "Confirmed POGS source/reference behavior and API/frontend reverse engineering",
+      "useFor": "POGS IDs, stored shapes, endpoint behavior, reference semantics"
+    },
+    {
+      "priority": 2,
+      "source": "Current transformation/validation code",
+      "useFor": "Actual parser, classifier, mapper, candidate, and validator behavior"
+    },
+    {
+      "priority": 3,
+      "source": "Regression Evidence Bundles",
+      "useFor": "Observed behavior across real local cases"
+    },
+    {
+      "priority": 4,
+      "source": "Human-reviewed cases and gap findings",
+      "useFor": "Correctness feedback and discovery of unsupported/ambiguous behavior"
+    }
+  ],
+  "changeControl": {
+    "whenToUpdateThisFile": [
+      "A POGS reference mapping is confirmed or rejected.",
+      "A canonical field is added, removed, or redefined.",
+      "A required/optional rule changes.",
+      "A folder/state semantic changes.",
+      "A regression status definition changes.",
+      "Pregnancy-specific rules are implemented.",
+      "A human-reviewed gap establishes a new deterministic rule."
+    ],
+    "requiredEvidenceForConfirmedMapping": [
+      "POGS reference/source confirmation or deterministic application evidence",
+      "Regression evidence showing expected behavior",
+      "No conflicting confirmed rule"
+    ]
+  }
+}

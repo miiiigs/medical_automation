@@ -1,0 +1,331 @@
+{
+  "name": "knowledge-regression",
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d = $json;\n\nconst knownFields = new Set([\n  \"caseNum\",\n  \"birthDate\",\n  \"admissionDate\",\n  \"room\",\n  \"weight\",\n  \"height\",\n  \"isPregnancy\",\n  \"isGyne\",\n  \"isPostpartum\",\n  \"obscoreG\",\n  \"obscoreP\",\n  \"obscoreFT\",\n  \"obscorePr\",\n  \"obscoreAb\",\n  \"obscoreLB\",\n  \"gynecologicalDiagnosis\",\n  \"unresolvedDiagnoses\",\n  \"ignoredDiagnosisTerms\",\n  \"classificationEvidence\",\n  \"source\",\n  \"validation\",\n  \"runContext\"\n]);\n\nconst unknownFields = Object.keys(d)\n  .filter(key => !knownFields.has(key));\n\nconst mappedDiagnoses =\n  d.gynecologicalDiagnosis ?? [];\n\nconst unresolvedDiagnoses =\n  d.unresolvedDiagnoses ?? [];\n\nconst ignoredDiagnosisTerms =\n  d.ignoredDiagnosisTerms ?? [];\n\nconst recognizedTerms =\n  mappedDiagnoses.length +\n  unresolvedDiagnoses.length +\n  ignoredDiagnosisTerms.length;\n\nconst mappedTerms =\n  mappedDiagnoses.length;\n\nconst unresolvedTerms =\n  unresolvedDiagnoses.length;\n\nconst ignoredTerms =\n  ignoredDiagnosisTerms.length;\n\nconst mappingComplete =\n  unresolvedTerms === 0;\n\nconst needsClinicalMappingReview =\n  unresolvedTerms > 0;\n\nconst ruleEvaluation = [];\n\n// Gyne diagnosis rules\nif (d.isGyne === true) {\n  ruleEvaluation.push({\n    field: \"gynecologicalDiagnosis\",\n    visible: true,\n    required: true,\n    applicable: true,\n    reason: \"isGyne = true\",\n    satisfied: mappedDiagnoses.length > 0\n  });\n} else if (d.isGyne === false) {\n  ruleEvaluation.push({\n    field: \"gynecologicalDiagnosis\",\n    visible: false,\n    required: false,\n    applicable: false,\n    reason: \"isGyne = false\",\n    satisfied: true\n  });\n} else {\n  ruleEvaluation.push({\n    field: \"gynecologicalDiagnosis\",\n    visible: null,\n    required: null,\n    applicable: null,\n    reason: \"isGyne is not classified\",\n    satisfied: false\n  });\n}\n\n// Pregnancy section\nif (d.isPregnancy === true) {\n  ruleEvaluation.push({\n    field: \"pregnancySection\",\n    visible: true,\n    required: true,\n    applicable: true,\n    reason: \"isPregnancy = true\",\n    satisfied: null\n  });\n} else if (d.isPregnancy === false) {\n  ruleEvaluation.push({\n    field: \"pregnancySection\",\n    visible: false,\n    required: false,\n    applicable: false,\n    reason: \"isPregnancy = false\",\n    satisfied: true\n  });\n} else {\n  ruleEvaluation.push({\n    field: \"pregnancySection\",\n    visible: null,\n    required: null,\n    applicable: null,\n    reason: \"isPregnancy is not classified\",\n    satisfied: false\n  });\n}\n\n// Postpartum section\nif (d.isPostpartum === true) {\n  ruleEvaluation.push({\n    field: \"postpartumSection\",\n    visible: true,\n    required: null,\n    applicable: true,\n    reason: \"isPostpartum = true\",\n    satisfied: null\n  });\n} else if (d.isPostpartum === false) {\n  ruleEvaluation.push({\n    field: \"postpartumSection\",\n    visible: false,\n    required: false,\n    applicable: false,\n    reason: \"isPostpartum = false\",\n    satisfied: true\n  });\n} else {\n  ruleEvaluation.push({\n    field: \"postpartumSection\",\n    visible: null,\n    required: null,\n    applicable: null,\n    reason: \"isPostpartum is not classified\",\n    satisfied: false\n  });\n}\n\n// OB score applicability\nconst obScoreValues = [\n  d.obscoreG,\n  d.obscoreP,\n  d.obscoreFT,\n  d.obscorePr,\n  d.obscoreAb,\n  d.obscoreLB\n];\n\nconst hasAnyOBScore =\n  obScoreValues.some(\n    value => value !== null && value !== undefined\n  );\n\nruleEvaluation.push({\n  field: \"obstetricScore\",\n  visible: null,\n  required: null,\n  applicable: hasAnyOBScore,\n  reason: hasAnyOBScore\n    ? \"OB score data was extracted from source\"\n    : \"No OB score data was extracted\",\n  satisfied: hasAnyOBScore\n});\n\n// Weight extraction\nruleEvaluation.push({\n  field: \"weight\",\n  visible: true,\n  required: false,\n  applicable: true,\n  reason: \"General patient measurement\",\n  satisfied:\n    d.weight !== null &&\n    d.weight !== undefined\n});\n\n// Height extraction\nruleEvaluation.push({\n  field: \"height\",\n  visible: true,\n  required: false,\n  applicable: true,\n  reason: \"General patient measurement\",\n  satisfied:\n    d.height !== null &&\n    d.height !== undefined\n});\n\nconst unsatisfiedRules =\n  ruleEvaluation.filter(\n    rule =>\n      rule.required === true &&\n      rule.satisfied === false\n  );\n\nconst timestamp =\n  new Date().toISOString();\n\n// Generate a stable non-identifying knowledge ID.\n// The same caseNum will always generate the same ID,\n// so rerunning the same candidate overwrites its knowledge file.\n\nif (!d.caseNum) {\n  throw new Error(\"Cannot generate knowledgeId: candidate has no caseNum\");\n}\n\nfunction stableHash(value) {\n  const str = String(value);\n\n  let hash1 = 0xdeadbeef;\n  let hash2 = 0x41c6ce57;\n\n  for (let i = 0; i < str.length; i++) {\n    const ch = str.charCodeAt(i);\n\n    hash1 = Math.imul(hash1 ^ ch, 2654435761);\n    hash2 = Math.imul(hash2 ^ ch, 1597334677);\n  }\n\n  hash1 =\n    Math.imul(\n      hash1 ^ (hash1 >>> 16),\n      2246822507\n    ) ^\n    Math.imul(\n      hash2 ^ (hash2 >>> 13),\n      3266489909\n    );\n\n  hash2 =\n    Math.imul(\n      hash2 ^ (hash2 >>> 16),\n      2246822507\n    ) ^\n    Math.imul(\n      hash1 ^ (hash1 >>> 13),\n      3266489909\n    );\n\n  return (\n    (hash2 >>> 0).toString(16).padStart(8, \"0\") +\n    (hash1 >>> 0).toString(16).padStart(8, \"0\")\n  );\n}\n\nconst knowledgeId =\n  `CASE-${stableHash(d.caseNum)}`;\n\nreturn {\n  json: {\n    schemaVersion: 2,\n\n    knowledgeId,\n    timestamp,\n\n    executionId:\n      $execution?.id ?? null,\n\n    classification: {\n      isPregnancy:\n        d.isPregnancy ?? null,\n\n      isGyne:\n        d.isGyne ?? null,\n\n      isPostpartum:\n        d.isPostpartum ?? null,\n\n      evidence:\n        d.classificationEvidence ?? []\n    },\n\n    runContext: {\n      mode: d.runContext?.mode ?? \"UNKNOWN\",\n      rawCaseId: d.runContext?.rawCaseId ?? null\n    },\n\n    extracted: {\n      birthDatePresent:\n        Boolean(d.birthDate),\n\n      admissionDatePresent:\n        Boolean(d.admissionDate),\n\n      roomPresent:\n        d.room !== null &&\n        d.room !== undefined,\n\n      weightPresent:\n        d.weight !== null &&\n        d.weight !== undefined,\n\n      heightPresent:\n        d.height !== null &&\n        d.height !== undefined,\n\n      obscoreG:\n        d.obscoreG ?? null,\n\n      obscoreP:\n        d.obscoreP ?? null,\n\n      obscoreFT:\n        d.obscoreFT ?? null,\n\n      obscorePr:\n        d.obscorePr ?? null,\n\n      obscoreAb:\n        d.obscoreAb ?? null,\n\n      obscoreLB:\n        d.obscoreLB ?? null\n    },\n\n    mapped: {\n      gynecologicalDiagnosis:\n        mappedDiagnoses\n    },\n\n    unresolved:\n      unresolvedDiagnoses,\n\n    ignored:\n      ignoredDiagnosisTerms,\n\n    mappingCoverage: {\n      recognizedTerms,\n      mappedTerms,\n      unresolvedTerms,\n      ignoredTerms\n    },\n\n    mappingStatus: {\n      mappingComplete,\n      needsClinicalMappingReview\n    },\n\n    ruleEvaluation,\n\n    ruleStatus: {\n      evaluatedRules:\n        ruleEvaluation.length,\n\n      unsatisfiedRequiredRules:\n        unsatisfiedRules,\n\n      needsRuleReview:\n        unsatisfiedRules.length > 0\n    },\n\n    validation: {\n      readyForPOGS:\n        d.validation?.readyForPOGS ?? false,\n\n      issues:\n        d.validation?.issues ?? [],\n\n      warnings:\n        d.validation?.warnings ?? []\n    },\n\n    discovery: {\n      unknownTopLevelFields:\n        unknownFields,\n\n      needsMappingReview:\n        needsClinicalMappingReview,\n\n      needsRuleReview:\n        unknownFields.length > 0 ||\n        unsatisfiedRules.length > 0\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3584,
+        -1040
+      ],
+      "id": "ca9346fb-d8ab-4577-acc8-d28350972b13",
+      "name": "Build Knowledge Record"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const record =\n  $json.currentRecord;\n\nif (!record?.knowledgeId) {\n  throw new Error(\n    \"Missing current knowledge record\"\n  );\n}\n\nconst content =\n  JSON.stringify(\n    record,\n    null,\n    2\n  );\n\nreturn {\n  json: {\n    knowledgeId:\n      record.knowledgeId,\n\n    fileName:\n      `${record.knowledgeId}.json`,\n\n    regressionResult:\n      $json.regressionResult\n  },\n\n  binary: {\n    data: {\n      data:\n        Buffer\n          .from(content, \"utf8\")\n          .toString(\"base64\"),\n\n      mimeType:\n        \"application/json\",\n\n      fileName:\n        `${record.knowledgeId}.json`\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4480,
+        -1232
+      ],
+      "id": "8fb22e25-980c-491c-96d2-4aabc3ba4dcd",
+      "name": "Knowledge Record to File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst summary = {\n  generatedAt: new Date().toISOString(),\n  totalCases: items.length,\n\n  statusCounts: {\n    NEW: 0,\n    IMPROVED: 0,\n    REGRESSED: 0,\n    CHANGED: 0,\n    UNCHANGED: 0,\n    UNKNOWN: 0\n  },\n\n  readyForPOGS: 0,\n  notReadyForPOGS: 0,\n\n  totalMappedTerms: 0,\n  totalUnresolvedTerms: 0,\n  totalValidationIssues: 0,\n  totalWarnings: 0,\n  totalUnsatisfiedRules: 0,\n  totalUnknownFields: 0,\n\n  needsAttention: 0,\n\n  cases: []\n};\n\nfor (const item of items) {\n  const data = item.json;\n\n  const regression =\n    data.regressionResult ?? {};\n\n  const current =\n    data.currentRecord ?? {};\n\n  const status =\n    regression.status ?? \"UNKNOWN\";\n\n  if (\n    Object.prototype.hasOwnProperty.call(\n      summary.statusCounts,\n      status\n    )\n  ) {\n    summary.statusCounts[status]++;\n  } else {\n    summary.statusCounts.UNKNOWN++;\n  }\n\n  const metrics =\n    regression.currentMetrics ?? {};\n\n  const ready =\n    metrics.readyForPOGS === true;\n\n  if (ready) {\n    summary.readyForPOGS++;\n  } else {\n    summary.notReadyForPOGS++;\n  }\n\n  summary.totalMappedTerms +=\n    Number(metrics.mapped ?? 0);\n\n  summary.totalUnresolvedTerms +=\n    Number(metrics.unresolved ?? 0);\n\n  summary.totalValidationIssues +=\n    Number(metrics.issues ?? 0);\n\n  summary.totalWarnings +=\n    Number(metrics.warnings ?? 0);\n\n  summary.totalUnsatisfiedRules +=\n    Number(metrics.unsatisfiedRules ?? 0);\n\n  summary.totalUnknownFields +=\n    Number(metrics.unknownFields ?? 0);\n\n  const requiresAttention =\n    status === \"REGRESSED\" ||\n    status === \"CHANGED\" ||\n    Number(metrics.unresolved ?? 0) > 0 ||\n    Number(metrics.issues ?? 0) > 0 ||\n    Number(metrics.unsatisfiedRules ?? 0) > 0 ||\n    Number(metrics.unknownFields ?? 0) > 0;\n\n  if (requiresAttention) {\n    summary.needsAttention++;\n  }\n\n  summary.cases.push({\n    knowledgeId:\n      data.knowledgeId ?? null,\n\n    rawCaseId:\n      current.runContext?.rawCaseId ?? null,\n\n    mode:\n      current.runContext?.mode ?? \"UNKNOWN\",\n\n    status,\n\n    readyForPOGS: ready,\n\n    mappedTerms:\n      metrics.mapped ?? 0,\n\n    unresolvedTerms:\n      metrics.unresolved ?? 0,\n\n    validationIssues:\n      metrics.issues ?? 0,\n\n    warnings:\n      metrics.warnings ?? 0,\n\n    unsatisfiedRules:\n      metrics.unsatisfiedRules ?? 0,\n\n    unknownFields:\n      metrics.unknownFields ?? 0,\n\n    changes:\n      regression.changes ?? [],\n\n    needsAttention:\n      requiresAttention\n  });\n}\n\nsummary.allCasesStable =\n  summary.statusCounts.REGRESSED === 0 &&\n  summary.statusCounts.CHANGED === 0;\n\nreturn [\n  {\n    json: summary\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4480,
+        -944
+      ],
+      "id": "74bb19ec-732c-4696-91fb-1303e35cb306",
+      "name": "Regression Summary"
+    },
+    {
+      "parameters": {
+        "jsCode": "const report = $json;\n\nconst filename = \"latest-regression.json\";\n\nconst content =\n  JSON.stringify(report, null, 2);\n\nreturn [{\n  json: {\n    filename\n  },\n\n  binary: {\n    data: {\n      data:\n        Buffer\n          .from(content, \"utf8\")\n          .toString(\"base64\"),\n\n      mimeType:\n        \"application/json\",\n\n      fileName:\n        filename\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4704,
+        -1040
+      ],
+      "id": "0a2273ca-75f3-4186-8eb6-5cf72913e9ff",
+      "name": "Summary to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ \"/data/logs/\" + $json.filename }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        4928,
+        -1040
+      ],
+      "id": "f432ff0d-b551-4d2f-b859-92d229631607",
+      "name": "Write Regression Report"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ \"/data/knowledge/\" + $json.knowledgeId + \".json\" }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        3808,
+        -960
+      ],
+      "id": "5a4c6e16-93c9-4178-b1e4-8038568999ad",
+      "name": "Read Existing Knowledge File",
+      "alwaysOutputData": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const current = $json;\n\nif (!current?.knowledgeId) {\n  throw new Error(\n    \"Current knowledge record is missing knowledgeId\"\n  );\n}\n\n\n// --------------------------------------------------\n// Load previous knowledge record if one exists\n// --------------------------------------------------\n\nlet previous = null;\n\nconst binaryKeys =\n  Object.keys($binary ?? {});\n\nif (binaryKeys.length > 0) {\n\n  try {\n\n    const binaryProperty =\n      binaryKeys[0];\n\n    const buffer =\n  await this.helpers.getBinaryDataBuffer(\n    $itemIndex,\n    binaryProperty\n  );\n    const text =\n      buffer.toString(\"utf8\");\n\n    previous =\n      JSON.parse(text);\n\n  } catch (error) {\n\n    previous = null;\n\n  }\n}\n\n\n// --------------------------------------------------\n// Normalize objects before comparing\n// Ignore fields that naturally change every run\n// --------------------------------------------------\n\nfunction comparable(record) {\n\n  if (!record) return null;\n\n  const copy =\n    JSON.parse(\n      JSON.stringify(record)\n    );\n\n  delete copy.lastUpdatedAt;\n  delete copy.timestamp;\n  delete copy.executionId;\n  delete copy.capturedAt;\n  delete copy.runContext;\n  return copy;\n}\n\n\n// --------------------------------------------------\n// Useful numeric metrics\n// --------------------------------------------------\n\nfunction metrics(record) {\n\n  return {\n\n    mapped:\n      record?.mappingCoverage\n        ?.mappedTerms ?? 0,\n\n    unresolved:\n      record?.mappingCoverage\n        ?.unresolvedTerms ?? 0,\n\n    issues:\n      record?.validation\n        ?.issues?.length ?? 0,\n\n    warnings:\n      record?.validation\n        ?.warnings?.length ?? 0,\n\n    unsatisfiedRules:\n      record?.ruleStatus\n        ?.unsatisfiedRequiredRules\n        ?.length ?? 0,\n\n    unknownFields:\n      record?.discovery\n        ?.unknownTopLevelFields\n        ?.length ?? 0,\n\n    readyForPOGS:\n      record?.validation\n        ?.readyForPOGS ?? false\n\n  };\n}\n\n\nconst currentMetrics =\n  metrics(current);\n\nconst previousMetrics =\n  previous\n    ? metrics(previous)\n    : null;\n\n\n// --------------------------------------------------\n// Determine change status\n// --------------------------------------------------\n\nlet status = \"NEW\";\n\nif (previous) {\n\n  const same =\n    JSON.stringify(\n      comparable(previous)\n    ) ===\n    JSON.stringify(\n      comparable(current)\n    );\n\n  if (same) {\n\n    status = \"UNCHANGED\";\n\n  } else {\n\n    let improvementScore = 0;\n    let regressionScore = 0;\n\n\n    // Fewer unresolved mappings = improvement\n    if (\n      currentMetrics.unresolved <\n      previousMetrics.unresolved\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.unresolved >\n      previousMetrics.unresolved\n    ) {\n      regressionScore++;\n    }\n\n\n    // More mapped terms = improvement\n    if (\n      currentMetrics.mapped >\n      previousMetrics.mapped\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.mapped <\n      previousMetrics.mapped\n    ) {\n      regressionScore++;\n    }\n\n\n    // Fewer validation issues = improvement\n    if (\n      currentMetrics.issues <\n      previousMetrics.issues\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.issues >\n      previousMetrics.issues\n    ) {\n      regressionScore++;\n    }\n\n\n    // Fewer unsatisfied rules = improvement\n    if (\n      currentMetrics.unsatisfiedRules <\n      previousMetrics.unsatisfiedRules\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.unsatisfiedRules >\n      previousMetrics.unsatisfiedRules\n    ) {\n      regressionScore++;\n    }\n\n\n    // Fewer unknown fields = improvement\n    if (\n      currentMetrics.unknownFields <\n      previousMetrics.unknownFields\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.unknownFields >\n      previousMetrics.unknownFields\n    ) {\n      regressionScore++;\n    }\n\n\n    // Becoming POGS-ready is improvement\n    if (\n      currentMetrics.readyForPOGS === true &&\n      previousMetrics.readyForPOGS === false\n    ) {\n      improvementScore++;\n    }\n\n    if (\n      currentMetrics.readyForPOGS === false &&\n      previousMetrics.readyForPOGS === true\n    ) {\n      regressionScore++;\n    }\n\n\n    if (\n      improvementScore > 0 &&\n      regressionScore === 0\n    ) {\n\n      status = \"IMPROVED\";\n\n    } else if (\n      regressionScore > 0 &&\n      improvementScore === 0\n    ) {\n\n      status = \"REGRESSED\";\n\n    } else {\n\n      status = \"CHANGED\";\n\n    }\n  }\n}\n\n\n// --------------------------------------------------\n// Build specific differences\n// --------------------------------------------------\n\nconst changes = [];\n\nif (previousMetrics) {\n\n  for (\n    const field of Object.keys(currentMetrics)\n  ) {\n\n    const before =\n      previousMetrics[field];\n\n    const after =\n      currentMetrics[field];\n\n    if (\n      JSON.stringify(before) !==\n      JSON.stringify(after)\n    ) {\n\n      changes.push({\n        field,\n        before,\n        after\n      });\n\n    }\n  }\n}\n\n\nreturn {\n  json: {\n\n    knowledgeId:\n      current.knowledgeId,\n\n    regressionResult: {\n\n      status,\n\n      hadPreviousRecord:\n        Boolean(previous),\n\n      previousMetrics,\n\n      currentMetrics,\n\n      changes\n\n    },\n\n    currentRecord:\n      current\n\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4256,
+        -1040
+      ],
+      "id": "e75174e4-d858-4bfc-bbcd-1f41542a6620",
+      "name": "Compare Knowledge Record"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ \"/data/knowledge/\" + $json.fileName }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        4704,
+        -1232
+      ],
+      "id": "5a78e593-8388-457d-86e3-c97b6a958375",
+      "name": "Write Knowledge File"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        4032,
+        -1040
+      ],
+      "id": "69bd3eea-aedc-4fdf-91bc-8306db26173b",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Regression Summary should provide exactly one item.\nconst summaryItems =\n  $input.all();\n\nif (summaryItems.length === 0) {\n  throw new Error(\n    \"Regression Summary produced no output\"\n  );\n}\n\nconst regression =\n  summaryItems[0].json;\n\n\n// --------------------------------------------------\n// Get the exact knowledge records used in this\n// regression run.\n//\n// Compare Knowledge Record already contains the\n// current knowledge record for each case.\n// --------------------------------------------------\n\nconst compareItems =\n  $items(\n    \"Compare Knowledge Record\"\n  );\n\nif (compareItems.length === 0) {\n  throw new Error(\n    \"No Compare Knowledge Record items found\"\n  );\n}\n\n\nconst knowledge = [];\n\nfor (const item of compareItems) {\n  const record =\n    item.json.currentRecord ??\n    null;\n\n  if (!record) {\n    throw new Error(\n      \"Compare Knowledge Record item is missing currentRecord\"\n    );\n  }\n\n  if (!record.knowledgeId) {\n    throw new Error(\n      \"Knowledge record is missing knowledgeId\"\n    );\n  }\n\n  const cleanRecord = {\n    ...record\n  };\n  \n  delete cleanRecord.mimeType;\n  delete cleanRecord.fileType;\n  delete cleanRecord.fileName;\n  delete cleanRecord.fileExtension;\n  delete cleanRecord.fileSize;\n  \n  knowledge.push(\n    cleanRecord\n  );\n}\n\n\n// --------------------------------------------------\n// Deterministic ordering.\n//\n// This makes bundles easier to diff between runs.\n// --------------------------------------------------\n\nknowledge.sort(\n  (a, b) =>\n    String(a.knowledgeId)\n      .localeCompare(\n        String(b.knowledgeId)\n      )\n);\n\n\n// --------------------------------------------------\n// Use the regression timestamp as the run identity.\n// --------------------------------------------------\n\nconst generatedAt =\n  regression.generatedAt ??\n  new Date().toISOString();\n\nconst regressionRunId =\n  `REG-${generatedAt\n    .replace(/[-:.]/g, \"\")\n    .replace(\"T\", \"-\")\n    .replace(\"Z\", \"\")}`;\n\n\n// --------------------------------------------------\n// Final evidence bundle.\n//\n// IMPORTANT:\n// This contains sanitized knowledge records,\n// not raw Google Docs / PHI.\n// --------------------------------------------------\n\nreturn [\n  {\n    json: {\n      schemaVersion: \"1.0\",\n\n      artifactType:\n        \"regression-evidence-bundle\",\n\n      regressionRunId,\n\n      generatedAt,\n\n      knowledgeFileCount:\n        knowledge.length,\n\n      knowledge,\n\n      regression\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4704,
+        -848
+      ],
+      "id": "1b8f6fe7-014f-4a76-8515-35101978fedf",
+      "name": "Build Regression Evidence Bundle"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const bundle =\n  $json;\n\nif (!bundle.regressionRunId) {\n  throw new Error(\n    \"Missing regressionRunId\"\n  );\n}\n\nconst fileName =\n  `${bundle.regressionRunId}.json`;\n\nconst content =\n  JSON.stringify(\n    bundle,\n    null,\n    2\n  );\n\nreturn {\n  json: {\n    regressionRunId:\n      bundle.regressionRunId,\n\n    generatedAt:\n      bundle.generatedAt,\n\n    knowledgeFileCount:\n      bundle.knowledgeFileCount,\n\n    fileName\n  },\n\n  binary: {\n    data: {\n      data:\n        Buffer.from(\n          content,\n          \"utf8\"\n        ).toString(\n          \"base64\"\n        ),\n\n      mimeType:\n        \"application/json\",\n\n      fileName\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4928,
+        -848
+      ],
+      "id": "d98b2054-6f07-4dce-b609-6d8340b37a8c",
+      "name": "Regression Evidence Bundle to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ \"/data/logs/regression_runs/\" + $json.fileName }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        5152,
+        -848
+      ],
+      "id": "360b4af1-38cd-415e-b720-fefbdb1f95be",
+      "name": "Write Regression Evidence Bundle"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        3376,
+        -1040
+      ],
+      "id": "1d1bb88f-ea84-47b9-a7ca-443a8ab13c9c",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Build Knowledge Record": {
+      "main": [
+        [
+          {
+            "node": "Read Existing Knowledge File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledge Record to File": {
+      "main": [
+        [
+          {
+            "node": "Write Knowledge File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Regression Summary": {
+      "main": [
+        [
+          {
+            "node": "Build Regression Evidence Bundle",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Summary to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary to File": {
+      "main": [
+        [
+          {
+            "node": "Write Regression Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Existing Knowledge File": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Compare Knowledge Record": {
+      "main": [
+        [
+          {
+            "node": "Knowledge Record to File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Regression Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Compare Knowledge Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Regression Evidence Bundle": {
+      "main": [
+        [
+          {
+            "node": "Regression Evidence Bundle to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Regression Evidence Bundle to File": {
+      "main": [
+        [
+          {
+            "node": "Write Regression Evidence Bundle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Build Knowledge Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "9769aec8-5041-418e-b0f3-bd89170c0c13",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6abe633e642ac10907998aea3acf7f455b53446183e61573d9b0db9c93a612e2"
+  },
+  "nodeGroups": [],
+  "id": "BT3xUOVZuyKE5bbz",
+  "tags": []
+}

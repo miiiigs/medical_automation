@@ -16,6 +16,8 @@ services:
       - TZ=${TZ}
       - N8N_SECURE_COOKIE=${N8N_SECURE_COOKIE}
       - N8N_RESTRICT_FILE_ACCESS_TO=/data/cases;/data/knowledge;/data/logs
+      - N8N_ENABLE_EXECUTE_COMMAND=true
+      - NODES_EXCLUDE=[]
 
       - POGS_USERNAME=${POGS_USERNAME}
       - POGS_PASSWORD=${POGS_PASSWORD}
