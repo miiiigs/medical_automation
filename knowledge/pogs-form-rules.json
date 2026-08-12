@@ -1,0 +1,1807 @@
+{
+  "schemaVersion": "1.0.0",
+  "artifactType": "pogs-form-rules",
+  "status": "ACTIVE_DRAFT",
+  "purpose": {
+    "summary": "Deterministic POGS web-form behavior model for field applicability, required conditions, controls, reference lists, and conditional branches.",
+    "notFor": [
+      "Raw patient data storage",
+      "AI-generated clinical truth",
+      "Guessing POGS reference IDs",
+      "POGS cloud submission automation"
+    ]
+  },
+  "sourcePolicy": {
+    "primary": "POGS frontend validation/reference-data source supplied during reverse engineering",
+    "preserveFrontendBehavior": true,
+    "doNotInventMissingRules": true,
+    "pinToRunningPogsBuildBeforeProduction": true
+  },
+  "ruleSemantics": {
+    "states": [
+      "exists",
+      "applicable",
+      "visible",
+      "required",
+      "satisfied"
+    ],
+    "conditionOperators": {
+      "eq": "exact equality including false/null",
+      "in": "membership in a set",
+      "truthy": "nonzero/nonfalse value",
+      "all": "all conditions must pass"
+    },
+    "booleanValidation": "false is a valid populated boolean; null/undefined is missing",
+    "numericValidation": "zero is valid numeric content; apply range/integer constraints separately",
+    "important": "Stored field existence does not imply current applicability, visibility, or requirement."
+  },
+  "sections": [
+    "demographics",
+    "admission",
+    "obstetricScore",
+    "pregnancy",
+    "delivery",
+    "morbidities",
+    "history",
+    "neonatal",
+    "gyne",
+    "procedures",
+    "pcos",
+    "covid",
+    "maternalOutcome",
+    "migs"
+  ],
+  "referenceSources": {
+    "pregnancyType": "referencedata/maternal_fetal_form_pregnancy_type",
+    "abortionType": "referencedata/abortion_pregnancy_type",
+    "ectopicType": "referencedata/ectopic_pregnancy_type",
+    "molarType": "referencedata/molar_pregnancy_type",
+    "aogType": "referencedata/aog_types",
+    "aogRange": "referencedata/aog_ranges",
+    "institutionalDelivery": "referencedata/institutional_delivery_types",
+    "deliveryManner": "referencedata/maternal_fetal_form_delivery",
+    "primaryRepeat": "referencedata/maternal_fetal_form_primary_repeat",
+    "incision": "referencedata/maternal_fetal_form_incision",
+    "deliveryIndicationCS": "referencedata/maternal_fetal_form_indications_cs",
+    "deliveryIndicationForceps": "referencedata/maternal_fetal_form_indication_forceps",
+    "deliveryIndicationVacuum": "referencedata/maternal_fetal_form_indication_vacuum",
+    "concomitantProcedure": "referencedata/maternal_fetal_form_concomitant_procedures",
+    "morbidities": "referencedata/maternal_fetal_form_morbidities",
+    "morbidityConditions": "refdata/maternal_fetal_form_morbidities_conditions",
+    "gyneComorbidities": "referencedata/maternal_fetal_form_morbidities",
+    "medicalHistory": "referencedata/maternal_fetal_form_medical_history",
+    "medicalHistoryConditions": "refdata/maternal_fetal_form_medical_history_conditions",
+    "obstetricHistory": "referencedata/maternal_fetal_form_obstetric_history",
+    "obstetricHistoryConditions": "refdata/maternal_fetal_form_obstetric_history_conditions",
+    "neonatalStatus": "referencedata/maternal_fetal_form_neonatal_conditions",
+    "neonatalInjury": "referencedata/maternal_fetal_form_neonatal_injury",
+    "neonatalCauseOfDeath": "referencedata/neonatal_causeofdeath",
+    "gyneDiagnosisCategory": "referencedata/maternal_fetal_form_gyne",
+    "gyneDiagnosisCondition": "refdata/maternal_fetal_form_gyne_conditions",
+    "gyneOrgan": "referencedata/maternal_fetal_form_organ",
+    "gyneOrganCondition": "refdata/maternal_fetal_form_organ_procedures",
+    "obProcedureCategory": "referencedata/maternal_fetal_form_oborgan",
+    "obProcedureCondition": "refdata/maternal_fetal_form_organ_obprocedures",
+    "pcosSymptoms": "referencedata/pcos_symptoms_type",
+    "inducedIndication": "referencedata/induced_indication",
+    "inducedMethod": "referencedata/induced_method",
+    "inducedComplication": "referencedata/induced_complication",
+    "motherCondition": "referencedata/maternal_fetal_form_mother_condition",
+    "mortalityTiming": "referencedata/maternal_mortality_timing",
+    "mortalityImmediateCause": "referencedata/maternal_mortality_immediate_cause",
+    "mortalityAntecedentCause": "referencedata/maternal_mortality_atecedent_cause",
+    "gtdDiagnosis": "referencedata/maternal_gtd_diagnosis",
+    "gtdComplication": "referencedata/maternal_gtd_complications",
+    "gtdMedicalSurgical": "referencedata/maternal_gtd_medical_surgical",
+    "gtdSurgicalIntervention": "referencedata/maternal_gtd_other_surgical_intervention"
+  },
+  "confirmedStaticOptions": {
+    "pregnancyType": [
+      {
+        "id": 1,
+        "name": "Singleton Pregnancy"
+      },
+      {
+        "id": 2,
+        "name": "Multiple Pregnancy"
+      },
+      {
+        "id": 3,
+        "name": "Abortion"
+      },
+      {
+        "id": 4,
+        "name": "Ectopic"
+      },
+      {
+        "id": 5,
+        "name": "Molar"
+      },
+      {
+        "id": 6,
+        "name": "Heterotopic"
+      }
+    ],
+    "abortionType": [
+      {
+        "id": 1,
+        "name": "Septic Spontaneous"
+      },
+      {
+        "id": 2,
+        "name": "Septic Induced"
+      },
+      {
+        "id": 3,
+        "name": "Non-septic Spontaneous"
+      },
+      {
+        "id": 4,
+        "name": "Non-Septic Induced"
+      }
+    ],
+    "ectopicType": [
+      {
+        "id": 1,
+        "name": "Tubal"
+      },
+      {
+        "id": 2,
+        "name": "Interstitial/Cornual"
+      },
+      {
+        "id": 3,
+        "name": "Unspecified"
+      },
+      {
+        "id": 4,
+        "name": "Ovarian"
+      },
+      {
+        "id": 5,
+        "name": "Abdominal"
+      },
+      {
+        "id": 6,
+        "name": "Cervical"
+      },
+      {
+        "id": 7,
+        "name": "CS Scar"
+      }
+    ],
+    "molarType": [
+      {
+        "id": 1,
+        "name": "Partial"
+      },
+      {
+        "id": 2,
+        "name": "Complete"
+      }
+    ],
+    "aogType": [
+      {
+        "id": 1,
+        "name": "Exact"
+      },
+      {
+        "id": 2,
+        "name": "Estimated"
+      }
+    ],
+    "aogRange": [
+      {
+        "id": 1,
+        "name": "<= 12"
+      },
+      {
+        "id": 2,
+        "name": "13-20"
+      },
+      {
+        "id": 3,
+        "name": "21-27"
+      },
+      {
+        "id": 4,
+        "name": "28-32"
+      },
+      {
+        "id": 5,
+        "name": "33-36"
+      },
+      {
+        "id": 6,
+        "name": "37-41"
+      },
+      {
+        "id": 7,
+        "name": ">= 42"
+      }
+    ],
+    "institutionalDelivery": [
+      {
+        "id": 1,
+        "name": "Institutional Delivery"
+      },
+      {
+        "id": 2,
+        "name": "Noninstitutional Delivery/Transit Delivery"
+      }
+    ],
+    "deliveryManner": [
+      {
+        "id": 1,
+        "name": "Caesarean Section"
+      },
+      {
+        "id": 2,
+        "name": "Normal Spontaneous Delivery"
+      },
+      {
+        "id": 3,
+        "name": "Spontaneous Vaginal Breech"
+      },
+      {
+        "id": 4,
+        "name": "Vaginal Partial Breech Delivery - Partial Breech Extraction"
+      },
+      {
+        "id": 5,
+        "name": "Assisted Vaginal Delivery - Outlet Forceps"
+      },
+      {
+        "id": 6,
+        "name": "Assisted Vaginal Delivery - Vacuum Extraction"
+      },
+      {
+        "id": 7,
+        "name": "Vaginal Partial Breech Delivery - With Piper’s forceps extraction of the aftercoming head"
+      },
+      {
+        "id": 8,
+        "name": "Vaginal Total Breech extraction"
+      },
+      {
+        "id": 9,
+        "name": "Vaginal Total Breech extraction - With Piper’s forceps extraction of the aftercoming head"
+      },
+      {
+        "id": 10,
+        "name": "VBAC - Spontaneous Delivery"
+      },
+      {
+        "id": 11,
+        "name": "VBAC - Outlet Forceps Extraction"
+      },
+      {
+        "id": 12,
+        "name": "VBAC - Vacuum Extraction"
+      },
+      {
+        "id": 14,
+        "name": "Vaginal Total Breech extraction - After Internal Podalic Version"
+      }
+    ],
+    "primaryRepeat": [
+      {
+        "id": 1,
+        "name": "Primary"
+      },
+      {
+        "id": 2,
+        "name": "Repeat"
+      }
+    ],
+    "incision": [
+      {
+        "id": 1,
+        "name": "Low segment"
+      },
+      {
+        "id": 2,
+        "name": "Classical"
+      }
+    ],
+    "pcosSymptoms": [
+      {
+        "id": 1,
+        "name": "Anovulation"
+      },
+      {
+        "id": 2,
+        "name": "Hyperandrogenism - clinical"
+      },
+      {
+        "id": 3,
+        "name": "Hyperandrogenism - FG score"
+      },
+      {
+        "id": 4,
+        "name": "Polycystic appearing ovaries"
+      }
+    ],
+    "inducedIndication": [
+      {
+        "id": 1,
+        "name": "Postdatism"
+      },
+      {
+        "id": 2,
+        "name": "Low AFI"
+      },
+      {
+        "id": 3,
+        "name": "Hypertension"
+      },
+      {
+        "id": 4,
+        "name": "PROM"
+      },
+      {
+        "id": 5,
+        "name": "Others"
+      }
+    ],
+    "inducedMethod": [
+      {
+        "id": 1,
+        "name": "Oxytocin"
+      },
+      {
+        "id": 2,
+        "name": "Laminaria"
+      },
+      {
+        "id": 3,
+        "name": "Foley Catheter"
+      },
+      {
+        "id": 4,
+        "name": "Pharmacologic - Dinoprostone Gel"
+      },
+      {
+        "id": 5,
+        "name": "Pharmacologic - Evening Prim Rose"
+      },
+      {
+        "id": 6,
+        "name": "Others"
+      }
+    ],
+    "inducedComplication": [
+      {
+        "id": 1,
+        "name": "Hemmorhage"
+      },
+      {
+        "id": 2,
+        "name": "Infection"
+      },
+      {
+        "id": 3,
+        "name": "Non reassuring fetal status"
+      },
+      {
+        "id": 4,
+        "name": "Uterine Rupture"
+      },
+      {
+        "id": 5,
+        "name": "Intrapartal Death"
+      },
+      {
+        "id": 6,
+        "name": "None"
+      }
+    ],
+    "neonatalStatus": [
+      {
+        "id": 1,
+        "name": "Livebirth"
+      },
+      {
+        "id": 3,
+        "name": "Early neonatal death (less than 7 days)"
+      },
+      {
+        "id": 4,
+        "name": "Late neonatal death (7 or more days)"
+      },
+      {
+        "id": 5,
+        "name": "Stillbirth - Antepartal"
+      },
+      {
+        "id": 6,
+        "name": "Stillbirth - Intrapartal"
+      }
+    ],
+    "neonatalInjury": [
+      {
+        "id": 1,
+        "name": "Subdural And Cerebral Hemorrhage"
+      },
+      {
+        "id": 2,
+        "name": "Epicranial Subaponeurotic Hemorrhage"
+      },
+      {
+        "id": 3,
+        "name": "Skeletal Injuries (Excludes Clavicle)"
+      },
+      {
+        "id": 4,
+        "name": "Clavicle Injury"
+      },
+      {
+        "id": 5,
+        "name": "Injury To Spine and Spinal Cord"
+      },
+      {
+        "id": 6,
+        "name": "Cranial & Peripheral Nerve Injuries"
+      },
+      {
+        "id": 7,
+        "name": "Unspecified Birth Trauma"
+      },
+      {
+        "id": 8,
+        "name": "None"
+      }
+    ],
+    "motherCondition": [
+      {
+        "id": 1,
+        "name": "Improved"
+      },
+      {
+        "id": 2,
+        "name": "Unimproved"
+      },
+      {
+        "id": 3,
+        "name": "Died"
+      }
+    ]
+  },
+  "fields": {
+    "admissionDate": {
+      "section": "admission",
+      "controlType": "date",
+      "label": "Date of Admission",
+      "closeCaseRequired": true
+    },
+    "age": {
+      "section": "demographics",
+      "controlType": "number",
+      "label": "Patient Age on Admission",
+      "closeCaseRequired": true
+    },
+    "weight": {
+      "section": "demographics",
+      "controlType": "number",
+      "label": "Patient's Weight",
+      "closeCaseRequired": true
+    },
+    "height": {
+      "section": "demographics",
+      "controlType": "number",
+      "label": "Patient's Height",
+      "closeCaseRequired": true
+    },
+    "bmi": {
+      "section": "demographics",
+      "controlType": "number",
+      "label": "Patient's BMI",
+      "closeCaseRequired": true
+    },
+    "room": {
+      "section": "admission",
+      "controlType": "text",
+      "label": "Room",
+      "requirementStatus": "VARIANT_DEPENDENT"
+    },
+    "caseFormType": {
+      "section": "admission",
+      "controlType": "dropdown",
+      "label": "Identify Case Type",
+      "closeCaseRequired": true
+    },
+    "isPostpartum": {
+      "section": "pregnancy",
+      "controlType": "checkbox",
+      "label": "Is this a postpartum admission?",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          }
+        ]
+      }
+    },
+    "admissionAOGType": {
+      "section": "pregnancy",
+      "controlType": "dropdown",
+      "label": "Admission AOG Type",
+      "optionsRef": "aogType",
+      "closeCaseRequired": true
+    },
+    "admissionAOG": {
+      "section": "pregnancy",
+      "controlType": "dropdown",
+      "label": "Admission AOG",
+      "optionsRef": "aogRange",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          }
+        ]
+      }
+    },
+    "admissionWeeks": {
+      "section": "pregnancy",
+      "controlType": "number",
+      "label": "Admission Weeks",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          },
+          {
+            "eq": {
+              "admissionAOGType": 1
+            }
+          }
+        ]
+      },
+      "validation": {
+        "min": 0,
+        "max": 52
+      }
+    },
+    "admissionDays": {
+      "section": "pregnancy",
+      "controlType": "number",
+      "label": "Admission Days",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          },
+          {
+            "eq": {
+              "admissionAOGType": 1
+            }
+          }
+        ]
+      },
+      "validation": {
+        "min": 0,
+        "max": 6
+      }
+    },
+    "obscoreG": {
+      "section": "obstetricScore",
+      "controlType": "number",
+      "label": "OB Score G",
+      "closeCaseRequired": true,
+      "validation": {
+        "min": 0,
+        "integer": true
+      }
+    },
+    "obscoreP": {
+      "section": "obstetricScore",
+      "controlType": "number",
+      "label": "OB Score P",
+      "closeCaseRequired": true,
+      "validation": {
+        "min": 0,
+        "integer": true
+      }
+    },
+    "obscoreFT": {
+      "section": "obstetricScore",
+      "controlType": "number",
+      "label": "OB Score FT",
+      "closeCaseRequired": true,
+      "validation": {
+        "min": 0,
+        "integer": true
+      }
+    },
+    "obscorePr": {
+      "section": "obstetricScore",
+      "controlType": "number",
+      "label": "OB Score Pr",
+      "closeCaseRequired": true,
+      "validation": {
+        "min": 0,
+        "integer": true
+      }
+    },
+    "obscoreAb": {
+      "section": "obstetricScore",
+      "controlType": "number",
+      "label": "OB Score Ab",
+      "closeCaseRequired": true,
+      "validation": {
+        "min": 0,
+        "integer": true
+      }
+    },
+    "obscoreLB": {
+      "section": "obstetricScore",
+      "controlType": "number",
+      "label": "OB Score LB",
+      "closeCaseRequired": true,
+      "validation": {
+        "min": 0,
+        "integer": true
+      }
+    },
+    "pregnancyType": {
+      "section": "pregnancy",
+      "controlType": "dropdown",
+      "label": "Pregnancy Type",
+      "optionsRef": "pregnancyType",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          }
+        ]
+      }
+    },
+    "isHeterotopic": {
+      "section": "pregnancy",
+      "controlType": "checkbox",
+      "label": "Is Heterotopic",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          },
+          {
+            "eq": {
+              "pregnancyType": 2
+            }
+          }
+        ]
+      },
+      "sourceConflict": "Frontend validation ties this to pregnancyType=2 while static option 2 is Multiple Pregnancy. Verify on running POGS build before production."
+    },
+    "abortionType": {
+      "section": "pregnancy",
+      "controlType": "dropdown",
+      "label": "Abortion Type",
+      "optionsRef": "abortionType",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          },
+          {
+            "eq": {
+              "pregnancyType": 3
+            }
+          }
+        ]
+      }
+    },
+    "ectopicType": {
+      "section": "pregnancy",
+      "controlType": "dropdown",
+      "label": "Ectopic Type",
+      "optionsRef": "ectopicType",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          },
+          {
+            "eq": {
+              "pregnancyType": 4
+            }
+          }
+        ]
+      }
+    },
+    "molarType": {
+      "section": "pregnancy",
+      "controlType": "dropdown",
+      "label": "Molar Type",
+      "optionsRef": "molarType",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          },
+          {
+            "eq": {
+              "pregnancyType": 5
+            }
+          }
+        ]
+      }
+    },
+    "isDelivered": {
+      "section": "delivery",
+      "controlType": "checkbox",
+      "label": "Has patient delivered ?",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          },
+          {
+            "eq": {
+              "isPostpartum": false
+            }
+          },
+          {
+            "in": {
+              "pregnancyType": [
+                1,
+                2
+              ]
+            }
+          }
+        ]
+      },
+      "semanticSource": "currentPregnancyDelivered"
+    },
+    "institutionalDelivery": {
+      "section": "delivery",
+      "controlType": "dropdown",
+      "label": "Is Institutional Delivery?",
+      "optionsRef": "institutionalDelivery",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          }
+        ]
+      }
+    },
+    "infantsNumber": {
+      "section": "delivery",
+      "controlType": "number",
+      "label": "Number of Infants",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          }
+        ]
+      },
+      "validation": {
+        "min": 1,
+        "integer": true
+      }
+    },
+    "deliveryDate": {
+      "section": "delivery",
+      "controlType": "date",
+      "label": "Date of Delivery",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          }
+        ]
+      }
+    },
+    "deliveryAOGType": {
+      "section": "delivery",
+      "controlType": "dropdown",
+      "label": "Delivery AOG Type",
+      "optionsRef": "aogType",
+      "closeCaseRequired": true
+    },
+    "deliveryAOG": {
+      "section": "delivery",
+      "controlType": "dropdown",
+      "label": "Delivery AOG",
+      "optionsRef": "aogRange",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          }
+        ]
+      }
+    },
+    "deliveryWeeks": {
+      "section": "delivery",
+      "controlType": "number",
+      "label": "Delivery AOG Weeks",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          },
+          {
+            "eq": {
+              "deliveryAOGType": 1
+            }
+          }
+        ]
+      },
+      "validation": {
+        "min": 0,
+        "max": 52
+      }
+    },
+    "deliveryDays": {
+      "section": "delivery",
+      "controlType": "number",
+      "label": "Delivery AOG Days",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          },
+          {
+            "eq": {
+              "deliveryAOGType": 1
+            }
+          }
+        ]
+      },
+      "validation": {
+        "min": 0,
+        "max": 6
+      }
+    },
+    "deliveryManner": {
+      "section": "delivery",
+      "controlType": "dropdown",
+      "label": "Manner of Delivery",
+      "optionsRef": "deliveryManner",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          }
+        ]
+      }
+    },
+    "primaryRepeat": {
+      "section": "delivery",
+      "controlType": "dropdown",
+      "label": "Primary or Repeat",
+      "optionsRef": "primaryRepeat",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          },
+          {
+            "eq": {
+              "deliveryManner": 1
+            }
+          }
+        ]
+      }
+    },
+    "incision": {
+      "section": "delivery",
+      "controlType": "dropdown",
+      "label": "Incision",
+      "optionsRef": "incision",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          },
+          {
+            "eq": {
+              "deliveryManner": 1
+            }
+          }
+        ]
+      }
+    },
+    "CSBilateralSalpingectomy": {
+      "section": "delivery",
+      "controlType": "checkbox",
+      "label": "Was Bilateral Salpingectomy performed during CS?",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          },
+          {
+            "eq": {
+              "deliveryManner": 1
+            }
+          }
+        ]
+      }
+    },
+    "CSBTL": {
+      "section": "delivery",
+      "controlType": "checkbox",
+      "label": "Was BTL performed during CS?",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          },
+          {
+            "eq": {
+              "deliveryManner": 1
+            }
+          }
+        ]
+      }
+    },
+    "deliveryIndication": {
+      "section": "delivery",
+      "controlType": "multiselect-reference",
+      "label": "Delivery Indication",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          },
+          {
+            "in": {
+              "deliveryManner": [
+                1,
+                5,
+                6
+              ]
+            }
+          }
+        ]
+      },
+      "validation": {
+        "minItems": 1
+      },
+      "optionsRefByParentValue": {
+        "1": "deliveryIndicationCS",
+        "5": "deliveryIndicationForceps",
+        "6": "deliveryIndicationVacuum"
+      }
+    },
+    "isTOLAC": {
+      "section": "delivery",
+      "controlType": "checkbox",
+      "label": "Did patient undergo TOLAC?",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          },
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          }
+        ]
+      }
+    },
+    "complicatedPregnancy": {
+      "section": "pregnancy",
+      "controlType": "checkbox",
+      "label": "Is Case a Complicated Pregnancy?",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          }
+        ]
+      }
+    },
+    "isInduced": {
+      "section": "delivery",
+      "controlType": "checkbox",
+      "label": "Was labor induced?",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          },
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          }
+        ]
+      }
+    },
+    "inducedIndication": {
+      "section": "delivery",
+      "controlType": "dropdown",
+      "label": "Specify indication of complicated pregnancy",
+      "optionsRef": "inducedIndication",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          },
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          },
+          {
+            "eq": {
+              "isInduced": true
+            }
+          }
+        ]
+      }
+    },
+    "inducedMethod": {
+      "section": "delivery",
+      "controlType": "dropdown",
+      "label": "Specify method of complicated pregnancy",
+      "optionsRef": "inducedMethod",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          },
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          },
+          {
+            "eq": {
+              "isInduced": true
+            }
+          }
+        ]
+      }
+    },
+    "inducedComplication": {
+      "section": "delivery",
+      "controlType": "dropdown",
+      "label": "Specify complication of complicated pregnancy",
+      "optionsRef": "inducedComplication",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          },
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          },
+          {
+            "eq": {
+              "isInduced": true
+            }
+          }
+        ]
+      }
+    },
+    "returnToOR": {
+      "section": "delivery",
+      "controlType": "checkbox",
+      "label": "Returned to OR",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isPregnancy": true
+            }
+          },
+          {
+            "eq": {
+              "complicatedPregnancy": true
+            }
+          }
+        ]
+      }
+    },
+    "morbidities": {
+      "section": "morbidities",
+      "controlType": "hierarchical-multiselect-reference",
+      "label": "Morbidities",
+      "categoryRef": "morbidities",
+      "conditionRef": "morbidityConditions",
+      "requiredWhen": {
+        "all": [
+          {
+            "truthy": "deliveryManner"
+          }
+        ]
+      }
+    },
+    "gynemorbidities": {
+      "section": "morbidities",
+      "controlType": "hierarchical-multiselect-reference",
+      "label": "Gyne Morbidities",
+      "categoryRef": "gyneComorbidities",
+      "conditionRef": "morbidityConditions",
+      "requirementStatus": "NO_EXPLICIT_CLOSE_CASE_RULE_FOUND"
+    },
+    "medicalHistory": {
+      "section": "history",
+      "controlType": "hierarchical-multiselect-reference",
+      "label": "Medical History",
+      "categoryRef": "medicalHistory",
+      "conditionRef": "medicalHistoryConditions"
+    },
+    "obstetricHistory": {
+      "section": "history",
+      "controlType": "hierarchical-multiselect-reference",
+      "label": "Obstetric History",
+      "categoryRef": "obstetricHistory",
+      "conditionRef": "obstetricHistoryConditions"
+    },
+    "concomitantProcedure": {
+      "section": "procedures",
+      "controlType": "multiselect-reference",
+      "label": "Concomitant Procedure",
+      "optionsRef": "concomitantProcedure"
+    },
+    "obProcedure": {
+      "section": "procedures",
+      "controlType": "hierarchical-multiselect-reference",
+      "label": "OB Procedure",
+      "categoryRef": "obProcedureCategory",
+      "conditionRef": "obProcedureCondition"
+    },
+    "isMedical": {
+      "section": "procedures",
+      "controlType": "checkbox",
+      "label": "Medical"
+    },
+    "isSurgical": {
+      "section": "procedures",
+      "controlType": "checkbox",
+      "label": "Surgical"
+    },
+    "isChemotherapy": {
+      "section": "procedures",
+      "controlType": "checkbox",
+      "label": "Chemotherapy"
+    },
+    "isRadiotherapy": {
+      "section": "procedures",
+      "controlType": "checkbox",
+      "label": "Radiotherapy"
+    },
+    "isOthers": {
+      "section": "procedures",
+      "controlType": "checkbox",
+      "label": "Others"
+    },
+    "otherProcedure": {
+      "section": "procedures",
+      "controlType": "text",
+      "label": "Other Procedure",
+      "visibleWhen": {
+        "all": [
+          {
+            "eq": {
+              "isOthers": true
+            }
+          }
+        ]
+      },
+      "requirementStatus": "VISIBLE_DEPENDENCY_INFERRED_FROM_PAIRED_STATE_NOT_CLOSE_RULE"
+    },
+    "neonatal": {
+      "section": "neonatal",
+      "controlType": "repeatable-object",
+      "label": "Neonatal",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isDelivered": true
+            }
+          },
+          {
+            "eq": {
+              "isPostpartum": false
+            }
+          }
+        ]
+      },
+      "cardinality": {
+        "countField": "infantsNumber",
+        "validateFirstNRecords": true
+      },
+      "completionRule": {
+        "allFieldsNonNull": true,
+        "blankStringsInvalid": true,
+        "anomalyOthersRequiredWhenAnomaliesTrue": true
+      },
+      "childFields": [
+        "status",
+        "anomalies",
+        "pediatricAge",
+        "pediatricWeight",
+        "pediatricHeight",
+        "apgar1m",
+        "apgar5m",
+        "injury",
+        "anomalyOthers"
+      ]
+    },
+    "neonatal.status": {
+      "section": "neonatal",
+      "controlType": "dropdown",
+      "label": "Neonatal Status",
+      "optionsRef": "neonatalStatus"
+    },
+    "neonatal.anomalies": {
+      "section": "neonatal",
+      "controlType": "checkbox",
+      "label": "Anomalies"
+    },
+    "neonatal.anomalyOthers": {
+      "section": "neonatal",
+      "controlType": "text",
+      "label": "Anomaly Others",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "neonatal.anomalies": true
+            }
+          }
+        ]
+      }
+    },
+    "neonatal.pediatricAge": {
+      "section": "neonatal",
+      "controlType": "number",
+      "label": "Pediatric Age",
+      "semanticStatus": "EXACT_UI_RANGE_MEANING_NOT_YET_CONFIRMED"
+    },
+    "neonatal.pediatricWeight": {
+      "section": "neonatal",
+      "controlType": "number",
+      "label": "Pediatric Weight"
+    },
+    "neonatal.pediatricHeight": {
+      "section": "neonatal",
+      "controlType": "number",
+      "label": "Pediatric Height"
+    },
+    "neonatal.apgar1m": {
+      "section": "neonatal",
+      "controlType": "number",
+      "label": "APGAR 1 minute"
+    },
+    "neonatal.apgar5m": {
+      "section": "neonatal",
+      "controlType": "number",
+      "label": "APGAR 5 minutes"
+    },
+    "neonatal.injury": {
+      "section": "neonatal",
+      "controlType": "dropdown",
+      "label": "Neonatal Injury",
+      "optionsRef": "neonatalInjury"
+    },
+    "pcosHistory": {
+      "section": "pcos",
+      "controlType": "checkbox",
+      "label": "Does patient have a history of PCOS?",
+      "closeCaseRequired": true
+    },
+    "pcosSymptoms": {
+      "section": "pcos",
+      "controlType": "multiselect",
+      "label": "Please identify PCOS symptoms.",
+      "optionsRef": "pcosSymptoms",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "pcosHistory": true
+            }
+          }
+        ]
+      }
+    },
+    "covidcase": {
+      "section": "covid",
+      "controlType": "dropdown",
+      "label": "Covid Case Type",
+      "closeCaseRequired": true,
+      "optionsStatus": "NOT_CONFIRMED_FROM_SUPPLIED_SOURCE"
+    },
+    "rtpcrtest": {
+      "section": "covid",
+      "controlType": "checkbox",
+      "label": "RT-PCR Test Done?",
+      "closeCaseRequired": true
+    },
+    "covidsymptoms": {
+      "section": "covid",
+      "controlType": "checkbox",
+      "label": "Has Covid Symptoms?",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "rtpcrtest": false
+            }
+          }
+        ]
+      }
+    },
+    "covidexposure": {
+      "section": "covid",
+      "controlType": "checkbox",
+      "label": "Has Covid Exposure?",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "covidsymptoms": false
+            }
+          }
+        ]
+      }
+    },
+    "rtpcrresult": {
+      "section": "covid",
+      "controlType": "dropdown",
+      "label": "RT-PCR Result",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "rtpcrtest": true
+            }
+          }
+        ]
+      },
+      "optionsStatus": "NOT_CONFIRMED_FROM_SUPPLIED_SOURCE"
+    },
+    "covidVaccineStatus": {
+      "section": "covid",
+      "controlType": "dropdown",
+      "label": "Covid Vaccine Status",
+      "closeCaseRequired": true,
+      "optionsStatus": "NOT_CONFIRMED_FROM_SUPPLIED_SOURCE"
+    },
+    "gynecologicalDiagnosis": {
+      "section": "gyne",
+      "controlType": "hierarchical-multiselect-reference",
+      "label": "Gynecological Diagnosis",
+      "categoryRef": "gyneDiagnosisCategory",
+      "conditionRef": "gyneDiagnosisCondition",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "isGyne": true
+            }
+          }
+        ]
+      },
+      "validation": {
+        "minItems": 1
+      },
+      "storedItemShape": {
+        "conditionId": "number",
+        "categoryId": "number",
+        "gyneStage": "number",
+        "others": "nullable",
+        "othersField": "nullable"
+      }
+    },
+    "gyneOrgan": {
+      "section": "gyne",
+      "controlType": "dropdown-reference",
+      "label": "Gyne Organ",
+      "optionsRef": "gyneOrgan"
+    },
+    "organCondition": {
+      "section": "gyne",
+      "controlType": "dropdown-reference",
+      "label": "Organ Condition",
+      "optionsRef": "gyneOrganCondition"
+    },
+    "gyneDiagnosis": {
+      "section": "gyne",
+      "controlType": "reference",
+      "label": "Gyne Diagnosis",
+      "note": "Stored legacy/parallel field; current automation targets gynecologicalDiagnosis."
+    },
+    "gtdDiagnosis": {
+      "section": "gyne",
+      "controlType": "dropdown-reference",
+      "label": "GTD Diagnosis",
+      "optionsRef": "gtdDiagnosis"
+    },
+    "gtdComplication": {
+      "section": "gyne",
+      "controlType": "dropdown-reference",
+      "label": "GTD Complication",
+      "optionsRef": "gtdComplication"
+    },
+    "gtdComplicationOthers": {
+      "section": "gyne",
+      "controlType": "text",
+      "label": "GTD Complication Others",
+      "triggerStatus": "OTHER_VALUE_ID_NOT_CONFIRMED"
+    },
+    "medicalSurgical": {
+      "section": "gyne",
+      "controlType": "dropdown-reference",
+      "label": "Medical/Surgical",
+      "optionsRef": "gtdMedicalSurgical"
+    },
+    "surgicalIntervention": {
+      "section": "gyne",
+      "controlType": "dropdown-reference",
+      "label": "Surgical Intervention",
+      "optionsRef": "gtdSurgicalIntervention"
+    },
+    "surgicalInterventionOthers": {
+      "section": "gyne",
+      "controlType": "text",
+      "label": "Surgical Intervention Others",
+      "triggerStatus": "OTHER_VALUE_ID_NOT_CONFIRMED"
+    },
+    "dischargeDate": {
+      "section": "maternalOutcome",
+      "controlType": "date",
+      "label": "Discharge Date",
+      "closeCaseRequired": true
+    },
+    "motherCondition": {
+      "section": "maternalOutcome",
+      "controlType": "dropdown",
+      "label": "Mother Condition",
+      "optionsRef": "motherCondition",
+      "closeCaseRequired": true
+    },
+    "antecedent": {
+      "section": "maternalOutcome",
+      "controlType": "dropdown-reference",
+      "label": "Antecedent",
+      "optionsRef": "mortalityAntecedentCause",
+      "applicableWhen": {
+        "all": [
+          {
+            "eq": {
+              "motherCondition": 3
+            }
+          }
+        ]
+      },
+      "requirementStatus": "VARIANT_DEPENDENT"
+    },
+    "antecedentType": {
+      "section": "maternalOutcome",
+      "controlType": "dropdown-reference",
+      "label": "Antecedent Type",
+      "optionsRef": "mortalityAntecedentCause",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "motherCondition": 3
+            }
+          }
+        ]
+      }
+    },
+    "immediateCause": {
+      "section": "maternalOutcome",
+      "controlType": "dropdown-reference",
+      "label": "Immediate Cause",
+      "optionsRef": "mortalityImmediateCause",
+      "applicableWhen": {
+        "all": [
+          {
+            "eq": {
+              "motherCondition": 3
+            }
+          }
+        ]
+      }
+    },
+    "immediateCauseOthers": {
+      "section": "maternalOutcome",
+      "controlType": "text",
+      "label": "Immediate Cause Others",
+      "applicableWhen": {
+        "all": [
+          {
+            "eq": {
+              "motherCondition": 3
+            }
+          }
+        ]
+      }
+    },
+    "complicationOnset": {
+      "section": "maternalOutcome",
+      "controlType": "dropdown-reference",
+      "label": "Complication Onset",
+      "applicableWhen": {
+        "all": [
+          {
+            "eq": {
+              "motherCondition": 3
+            }
+          }
+        ]
+      }
+    },
+    "complicationOnsetSpecific": {
+      "section": "maternalOutcome",
+      "controlType": "text",
+      "label": "Complication Onset Specific",
+      "applicableWhen": {
+        "all": [
+          {
+            "eq": {
+              "motherCondition": 3
+            }
+          }
+        ]
+      }
+    },
+    "deathTiming": {
+      "section": "maternalOutcome",
+      "controlType": "dropdown-reference",
+      "label": "Timing of Death",
+      "optionsRef": "mortalityTiming",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "motherCondition": 3
+            }
+          }
+        ]
+      }
+    },
+    "deathTimingComplication": {
+      "section": "maternalOutcome",
+      "controlType": "text",
+      "label": "Death Timing Complication",
+      "applicableWhen": {
+        "all": [
+          {
+            "eq": {
+              "motherCondition": 3
+            }
+          }
+        ]
+      }
+    },
+    "deathReviewed": {
+      "section": "maternalOutcome",
+      "controlType": "checkbox",
+      "label": "Mortality reviewed by department/steering committee?",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "motherCondition": 3
+            }
+          }
+        ]
+      }
+    },
+    "hasFailedMIS": {
+      "section": "migs",
+      "controlType": "checkbox",
+      "label": "Has failed MIS Procedure?"
+    },
+    "MIGSSurgeon": {
+      "section": "migs",
+      "controlType": "dropdown",
+      "label": "MIGS Surgeon",
+      "requirementStatus": "FRONTEND_VARIANT_HAS_CLOSE_RULE"
+    },
+    "MIGSSurgeonPSGE": {
+      "section": "migs",
+      "controlType": "text-or-reference",
+      "label": "Surgeon PSGE Fellow",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "MIGSSurgeon": 1
+            }
+          },
+          {
+            "eq": {
+              "MIGSSurgeonPSRM": null
+            }
+          }
+        ]
+      }
+    },
+    "MIGSSurgeonPSRM": {
+      "section": "migs",
+      "controlType": "text-or-reference",
+      "label": "Surgeon PSRM Fellow",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "MIGSSurgeon": 1
+            }
+          },
+          {
+            "eq": {
+              "MIGSSurgeonPSGE": null
+            }
+          }
+        ]
+      }
+    },
+    "MIGSAssist": {
+      "section": "migs",
+      "controlType": "dropdown",
+      "label": "MIGS Assistant",
+      "requirementStatus": "FRONTEND_VARIANT_HAS_CLOSE_RULE"
+    },
+    "MIGSAssistPSGE": {
+      "section": "migs",
+      "controlType": "text-or-reference",
+      "label": "Assist PSGE Fellow",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "MIGSAssist": 1
+            }
+          },
+          {
+            "eq": {
+              "MIGSAssistPSRM": null
+            }
+          }
+        ]
+      }
+    },
+    "MIGSAssistPSRM": {
+      "section": "migs",
+      "controlType": "text-or-reference",
+      "label": "Assist PSRM Fellow",
+      "requiredWhen": {
+        "all": [
+          {
+            "eq": {
+              "MIGSAssist": 1
+            }
+          },
+          {
+            "eq": {
+              "MIGSAssistPSGE": null
+            }
+          }
+        ]
+      }
+    }
+  },
+  "engineRules": {
+    "requiredEvaluation": "Field is required when closeCaseRequired=true or requiredWhen evaluates true.",
+    "applicabilityEvaluation": "Use applicableWhen if present. A conditional required field is applicable when its condition is true.",
+    "arrayValidation": "Apply minItems to arrays/objects when applicable.",
+    "booleanValidation": "false is valid; only null/undefined is missing.",
+    "numericValidation": "0 is valid; then enforce min/max/integer.",
+    "neonatalValidation": "When neonatal is required and infantsNumber>0, validate the first infantsNumber records; anomalyOthers only becomes required when anomalies=true.",
+    "referenceIntegrity": "Only confirmed POGS reference IDs may be emitted.",
+    "regressionSafety": "REGRESSION may evaluate rules but must never call live POGS writes."
+  },
+  "knownGaps": [
+    {
+      "area": "visibility-vs-required",
+      "status": "PARTIAL",
+      "detail": "Close-case required conditions are strongly confirmed. Not every visual show/hide branch was independently extracted."
+    },
+    {
+      "area": "full reference dictionaries",
+      "status": "SEPARATE_ARTIFACT_RECOMMENDED",
+      "detail": "Large hierarchical diagnosis, morbidity, history, and procedure dictionaries should be exported to pogs-reference-values.json instead of duplicating all entries here."
+    },
+    {
+      "area": "pediatric-range-specific conditional fields",
+      "status": "NOT_CONFIRMED",
+      "detail": "Neonatal fields and completion rules are confirmed, but an exact age/gestational-range condition that reveals additional pediatric fields was not established from the supplied source. Do not invent a threshold."
+    },
+    {
+      "area": "pregnancyType=2/isHeterotopic",
+      "status": "SOURCE_CONFLICT_REVIEW_REQUIRED",
+      "detail": "Static pregnancyType option 2 is Multiple Pregnancy while frontend validation requires isHeterotopic for pregnancyType=2. Verify against the running build."
+    },
+    {
+      "area": "COVID dropdown options",
+      "status": "NOT_FULLY_EXTRACTED",
+      "detail": "Conditional behavior is confirmed; complete option dictionaries are not yet confirmed."
+    },
+    {
+      "area": "frontend variants",
+      "status": "PIN_BUILD_BEFORE_PRODUCTION",
+      "detail": "Supplied bundles show small validation differences. Rules should be verified against the exact running POGS frontend build."
+    }
+  ],
+  "implementation": {
+    "recommendedPath": "/data/knowledge/pogs-form-rules.json",
+    "companionReferenceFile": "/data/knowledge/pogs-reference-values.json",
+    "n8nFlow": [
+      "Parse Clinical Sections",
+      "Classify / AI-assisted fact extraction",
+      "Map clinical concepts using semantic layer",
+      "Load POGS Form Rules",
+      "Apply POGS Form Rules",
+      "Build POGS Candidate",
+      "Validate applicable required fields",
+      "Knowledge & Regression",
+      "Only LIVE + readyForPOGS may invoke local POGS Processing"
+    ]
+  }
+}

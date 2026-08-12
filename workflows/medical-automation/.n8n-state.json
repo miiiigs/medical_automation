@@ -1,0 +1,39 @@
+{
+  "workflows": {
+    "BT3xUOVZuyKE5bbz": {
+      "lastSyncedHash": "754a3ec89c520285e51b403f56c66ebc130ae66ce4b03c093f68ea01ad694695",
+      "lastSyncedAt": "2026-08-12T16:06:31.920Z",
+      "filename": "knowledge-regression.workflow.ts"
+    },
+    "mvtFIT6QbBavL3yf": {
+      "lastSyncedHash": "a7eba01abe2e25350dc90140965b3439e92211248f44270e85932e8ae0ac87b6",
+      "lastSyncedAt": "2026-08-12T16:55:23.063Z",
+      "filename": "case-new-processing.workflow.ts"
+    },
+    "RdfJbQll0ukwP31f": {
+      "lastSyncedHash": "43636e3c3c0133c2f940c2baba0d84db26abf84d8d36c6dcbb0aefd1c421f33a",
+      "lastSyncedAt": "2026-08-12T16:55:24.086Z",
+      "filename": "clinical-ai-helper.workflow.ts"
+    },
+    "muoM56eF7sszgYmW": {
+      "lastSyncedHash": "dcae0d5d23eeb7f00b44e9cfe400a8318b5d33ee084c872398ef02058d3efc49",
+      "lastSyncedAt": "2026-08-12T16:55:28.259Z",
+      "filename": "pogs-processing.workflow.ts"
+    },
+    "ofTTyTl8AFjvPpSk": {
+      "lastSyncedHash": "f0401f38b09e80180ccf7d80479a87496ca68f2829c3e3ee145e046970ef08b4",
+      "lastSyncedAt": "2026-08-12T16:55:26.398Z",
+      "filename": "medical_automation(outdated for reference only).workflow.ts"
+    },
+    "p579PotbV56XZXzp": {
+      "lastSyncedHash": "d054e18281ff02eda76d4772588938159580cd8743b7ab0ccfaa69629d83871f",
+      "lastSyncedAt": "2026-08-12T16:06:38.940Z",
+      "filename": "pogs-rule-engine.workflow.ts"
+    },
+    "y4OLuHAKYYHh1RJ3": {
+      "lastSyncedHash": "d62901c599d84586ad5824f5ba26a157ced253be44233312ccbc23d335f942aa",
+      "lastSyncedAt": "2026-08-12T16:57:57.876Z",
+      "filename": "case-ingestion.workflow.ts"
+    }
+  }
+}

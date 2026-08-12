@@ -1,143 +1,393 @@
 {
+  "id": "mvtFIT6QbBavL3yf",
   "name": "case-new-processing",
+  "active": false,
   "nodes": [
     {
-      "parameters": {},
+      "id": "55b98a2d-97e6-40fd-908a-05a8accca110",
+      "name": "When clicking ‘Execute workflow’",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        1344,
-        -1664
+        1424,
+        -1728
       ],
-      "id": "55b98a2d-97e6-40fd-908a-05a8accca110",
-      "name": "When clicking ‘Execute workflow’"
+      "parameters": {}
     },
     {
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const text = $json.documentText || '';\n\nfunction clean(value) {\n  return (value || '')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfunction sectionBetween(startPattern, endPattern) {\n  const start = text.search(startPattern);\n\n  if (start === -1) {\n    return '';\n  }\n\n  const afterStart = text.slice(start);\n  const end = afterStart.search(endPattern);\n\n  if (end === -1) {\n    return clean(afterStart);\n  }\n\n  return clean(\n    afterStart.slice(0, end)\n  );\n}\n\n\n// --------------------------------------------------\n// Flexible date extraction\n// Supports:\n// M/D/YYYY\n// MM/DD/YYYY\n// M-D-YYYY\n// MM-DD-YYYY\n//\n// Returns normalized MM/DD/YYYY\n// --------------------------------------------------\n\nfunction findDateNearLabel(\n  labelPattern,\n  maxChars = 180\n) {\n  const labelMatch =\n    text.match(labelPattern);\n\n  if (\n    !labelMatch ||\n    labelMatch.index === undefined\n  ) {\n    return null;\n  }\n\n  const nearby =\n    text.slice(\n      labelMatch.index,\n      labelMatch.index + maxChars\n    );\n\n  const dateMatch =\n    nearby.match(\n      /\\b(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{4})\\b/\n    );\n\n  if (!dateMatch) {\n    return null;\n  }\n\n  const month =\n    dateMatch[1].padStart(2, '0');\n\n  const day =\n    dateMatch[2].padStart(2, '0');\n\n  const year =\n    dateMatch[3];\n\n  return `${month}/${day}/${year}`;\n}\n\n\n// --------------------------------------------------\n// Patient demographics\n// --------------------------------------------------\n\nconst nameMatch =\n  text.match(\n    /Name\\s*\\|\\s*:\\s*\\|\\s*([^|\\n]+)/i\n  );\n\nconst hospitalMatch =\n  text.match(\n    /Hospital Number\\s*\\|\\s*:\\s*\\|\\s*([0-9]+)/i\n  );\n\nconst addressMatch =\n  text.match(\n    /Address\\s*\\|\\s*:\\s*\\|\\s*([^|]+?)\\s*\\|\\s*(?:Birthday|Birthdate|Birth\\s*Date|Date\\s+of\\s+Birth|DOB)/i\n  );\n\n\n// --------------------------------------------------\n// Birth date\n//\n// Supports common labels:\n// Birthday\n// Birthdate\n// Birth Date\n// Date of Birth\n// DOB\n// --------------------------------------------------\n\nconst birthDate =\n  findDateNearLabel(\n    /\\b(?:Birthday|Birthdate|Birth\\s*Date|Date\\s+of\\s+Birth|DOB)\\b/i\n  );\n\n\n// --------------------------------------------------\n// Age / Sex\n//\n// Independent from birth-date extraction so a\n// layout difference does not cause all three fields\n// to fail together.\n//\n// Example:\n// Birthdate | 07/01/1990 | 36 / F\n// --------------------------------------------------\n\nconst ageSexMatch =\n  text.match(\n    /\\b(?:Birthday|Birthdate|Birth\\s*Date|Date\\s+of\\s+Birth|DOB)\\b[\\s\\S]{0,180}?\\b(\\d{1,3})\\s*\\/\\s*([MF])\\b/i\n  );\n\n\n// --------------------------------------------------\n// Admission / discharge dates\n// --------------------------------------------------\n\nconst admissionDate =\n  findDateNearLabel(\n    /Date\\s+of\\s+Admission/i\n  );\n\nconst dischargeDate =\n  findDateNearLabel(\n    /Date\\s+of\\s+Discharge/i\n  );\n\n\n// --------------------------------------------------\n// Admission time\n// --------------------------------------------------\n\nconst admissionTimeMatch =\n  text.match(\n    /Time\\s+of\\s+Admission[\\s|:]*([0-9]{1,2}(?::[0-9]{2})?\\s*(?:AM|PM|am|pm)?)/i\n  );\n\n\n// --------------------------------------------------\n// Obstetric score\n//\n// Example:\n// G4 P3 (3-0-0-3)\n// --------------------------------------------------\n\nconst obIndexMatch =\n  text.match(\n    /\\bG(\\d+)\\s*P(\\d+)\\s*\\((\\d+)-(\\d+)-(\\d+)-(\\d+)\\)/i\n  );\n\n\n// --------------------------------------------------\n// Medical history\n// --------------------------------------------------\n\nconst hasChronicHypertension =\n  /\\(\\+\\)\\s*Chronic hypertension/i\n    .test(text);\n\nconst diabetesNegative =\n  /Diabetes mellitus\\s*\\|\\s*\\(-\\)/i\n    .test(text);\n\nconst asthmaNegative =\n  /Bronchial asthma\\s*\\|\\s*\\(-\\)/i\n    .test(text);\n\nconst thyroidNegative =\n  /Thyroid disease\\s*\\|\\s*\\(-\\)/i\n    .test(text);\n\n\n// --------------------------------------------------\n// Vitals\n// --------------------------------------------------\n\nconst bpMatch =\n  text.match(\n    /BP:\\s*([0-9]+\\/[0-9]+)\\s*mmHg/i\n  );\n\nconst hrMatch =\n  text.match(\n    /HR:\\s*([0-9]+)\\s*bpm/i\n  );\n\nconst rrMatch =\n  text.match(\n    /RR:\\s*([0-9]+)\\s*cpm/i\n  );\n\nconst o2Match =\n  text.match(\n    /O2 Sat:\\s*([0-9]+)%/i\n  );\n\nconst tempMatch =\n  text.match(\n    /Temp:\\s*([0-9.]+)°?C/i\n  );\n\n\n// --------------------------------------------------\n// Measurements\n// --------------------------------------------------\n\nconst weightMatch =\n  text.match(\n    /Weight:\\s*([0-9]+(?:\\.[0-9]+)?)\\s*kg/i\n  );\n\nconst heightMatch =\n  text.match(\n    /Height:\\s*([0-9]+(?:\\.[0-9]+)?)\\s*cm/i\n  );\n\n\n// --------------------------------------------------\n// Output\n// --------------------------------------------------\n\nreturn {\n  json: {\n\n    runContext:\n      $json.runContext ?? {\n        mode: 'LIVE',\n        rawCaseId: null\n      },\n\n    sourceTitle:\n      $json.title ?? null,\n\n    patient: {\n\n      name:\n        clean(\n          nameMatch?.[1]\n        ),\n\n      hospitalNumber:\n        clean(\n          hospitalMatch?.[1]\n        ),\n\n      address:\n        clean(\n          addressMatch?.[1]\n        ),\n\n      birthDate,\n\n      age:\n        ageSexMatch\n          ? Number(\n              ageSexMatch[1]\n            )\n          : null,\n\n      sex:\n        ageSexMatch?.[2]\n          ?.toUpperCase() ??\n        null\n    },\n\n\n    admission: {\n\n      date:\n        admissionDate,\n\n      time:\n        clean(\n          admissionTimeMatch?.[1]\n        ) || null,\n\n      dischargeDate\n    },\n\n\n    obstetric: {\n\n      gravida:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[1]\n            )\n          : null,\n\n      para:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[2]\n            )\n          : null,\n\n      fullTerm:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[3]\n            )\n          : null,\n\n      preterm:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[4]\n            )\n          : null,\n\n      abortion:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[5]\n            )\n          : null,\n\n      living:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[6]\n            )\n          : null\n    },\n\n\n    medicalHistory: {\n\n      chronicHypertension:\n        hasChronicHypertension,\n\n      diabetesMellitus:\n        diabetesNegative\n          ? false\n          : null,\n\n      bronchialAsthma:\n        asthmaNegative\n          ? false\n          : null,\n\n      thyroidDisease:\n        thyroidNegative\n          ? false\n          : null\n    },\n\n\n    vitals: {\n\n      bloodPressure:\n        bpMatch?.[1] ??\n        null,\n\n      heartRate:\n        hrMatch\n          ? Number(\n              hrMatch[1]\n            )\n          : null,\n\n      respiratoryRate:\n        rrMatch\n          ? Number(\n              rrMatch[1]\n            )\n          : null,\n\n      oxygenSaturation:\n        o2Match\n          ? Number(\n              o2Match[1]\n            )\n          : null,\n\n      temperatureC:\n        tempMatch\n          ? Number(\n              tempMatch[1]\n            )\n          : null\n    },\n\n\n    measurements: {\n\n      weightKg:\n        weightMatch\n          ? Number(\n              weightMatch[1]\n            )\n          : null,\n\n      heightCm:\n        heightMatch\n          ? Number(\n              heightMatch[1]\n            )\n          : null\n    },\n\n\n    sections: {\n\n      reasonForAdmission:\n        sectionBetween(\n          /REASON FOR ADMISSION:/i,\n          /HISTORY OF PRESENT ILLNESS/i\n        ),\n\n      historyOfPresentIllness:\n        sectionBetween(\n          /HISTORY OF PRESENT ILLNESS/i,\n          /Pertinent Past Medical History:/i\n        ),\n\n      finalDiagnosis:\n        sectionBetween(\n          /Final Diagnosis/i,\n          /Physicians-in-Charge/i\n        ),\n\n      courseInWard:\n        sectionBetween(\n          /COURSE IN THE WARD/i,\n          /SURGICAL PROCEDURE/i\n        )\n    }\n  }\n};"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2240,
-        -1568
-      ],
       "id": "452ff365-5d4d-4224-91c1-85f6959170c3",
-      "name": "Parse Clinical Sections"
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const src = $json;\n\nfunction toISODate(mmddyyyy) {\n  if (!mmddyyyy) return null;\n\n  const match = String(mmddyyyy).match(\n    /^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/\n  );\n\n  if (!match) return null;\n\n  return `${match[3]}-${match[1]}-${match[2]}`;\n}\n\nconst gynecologicalDiagnosis =\n  (src.pogsDiagnosisMapping?.mapped ?? [])\n    .map(item => ({\n      categoryId: item.categoryId,\n      conditionId: item.conditionId,\n      gyneStage: item.gyneStage,\n      others: null,\n      othersField: null\n    }));\n\nreturn {\n  json: {\n    runContext:\n      src.runContext ?? {\n        mode: \"LIVE\",\n        rawCaseId: null\n      },\n\n    caseNum:\n      src.patient?.hospitalNumber ?? null,\n\n    birthDate:\n      toISODate(src.patient?.birthDate),\n\n    admissionDate:\n      toISODate(src.admission?.date),\n\n    room: null,\n\n    weight:\n      src.measurements?.weightKg ?? null,\n\n    height:\n      src.measurements?.heightCm ?? null,\n\n    isPregnancy:\n      src.classification?.isPregnancy ?? null,\n\n    isGyne:\n      src.classification?.isGyne ?? null,\n\n    isPostpartum:\n      src.classification?.isPostpartum ?? null,\n\n    obscoreG:\n      src.obstetric?.gravida ?? null,\n\n    obscoreP:\n      src.obstetric?.para ?? null,\n\n    obscoreFT:\n      src.obstetric?.fullTerm ?? null,\n\n    obscorePr:\n      src.obstetric?.preterm ?? null,\n\n    obscoreAb:\n      src.obstetric?.abortion ?? null,\n\n    obscoreLB:\n      src.obstetric?.living ?? null,\n\n    gynecologicalDiagnosis,\n\n    unresolvedDiagnoses:\n      src.pogsDiagnosisMapping?.unresolved ?? [],\n\n    ignoredDiagnosisTerms:\n      src.pogsDiagnosisMapping?.ignored ?? [],\n\n    classificationEvidence:\n      src.classification?.reasons ?? [],\n\n    source: {\n      title:\n        src.sourceTitle ?? null,\n\n      patientName:\n        src.patient?.name ?? null,\n\n      hospitalNumber:\n        src.patient?.hospitalNumber ?? null,\n\n      finalDiagnosis:\n        src.sections?.finalDiagnosis ?? null,\n\n      reasonForAdmission:\n        src.sections?.reasonForAdmission ?? null\n    }\n  }\n};"
-      },
+      "name": "Parse Clinical Sections",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3136,
-        -1568
+        2320,
+        -1824
       ],
-      "id": "28408c2a-a912-43e3-b228-74777e41ff61",
-      "name": "Build POGS Candidate"
-    },
-    {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const data = $json;\n\nconst issues = [];\nconst warnings = [];\n\n\n// --------------------------------------------------\n// Required core identifiers\n// --------------------------------------------------\n\nif (!data.caseNum) {\n  issues.push(\"Missing caseNum\");\n}\n\nif (!data.birthDate) {\n  issues.push(\"Missing birthDate\");\n}\n\nif (!data.admissionDate) {\n  issues.push(\"Missing admissionDate\");\n}\n\n\n// --------------------------------------------------\n// Case classification\n// --------------------------------------------------\n\nif (\n  data.isPregnancy === null ||\n  data.isPregnancy === undefined\n) {\n  issues.push(\"isPregnancy not classified\");\n}\n\nif (\n  data.isGyne === null ||\n  data.isGyne === undefined\n) {\n  issues.push(\"isGyne not classified\");\n}\n\nif (\n  data.isPostpartum === null ||\n  data.isPostpartum === undefined\n) {\n  issues.push(\"isPostpartum not classified\");\n}\n\nif (\n  data.isPregnancy === false &&\n  data.isGyne === false\n) {\n  issues.push(\n    \"Neither pregnancy nor gyne case is selected\"\n  );\n}\n\n\n// --------------------------------------------------\n// OB score sanity checks\n// --------------------------------------------------\n\nconst obFields = [\n  \"obscoreG\",\n  \"obscoreP\",\n  \"obscoreFT\",\n  \"obscorePr\",\n  \"obscoreAb\",\n  \"obscoreLB\"\n];\n\nfor (const field of obFields) {\n  const value = data[field];\n\n  if (\n    value !== null &&\n    value !== undefined &&\n    (\n      !Number.isInteger(value) ||\n      value < 0\n    )\n  ) {\n    issues.push(\n      `${field} is invalid`\n    );\n  }\n}\n\n\n// --------------------------------------------------\n// Physical measurements\n// --------------------------------------------------\n\nif (\n  data.weight === null ||\n  data.weight === undefined\n) {\n  warnings.push(\n    \"Weight not extracted or requires review\"\n  );\n}\n\nif (\n  data.height === null ||\n  data.height === undefined\n) {\n  warnings.push(\n    \"Height not extracted or requires review\"\n  );\n}\n\n\n// --------------------------------------------------\n// Gyne diagnosis requirement\n//\n// A gyne case must have at least one confirmed\n// POGS gynecologicalDiagnosis mapping.\n// --------------------------------------------------\n\nif (data.isGyne === true) {\n  const mappedGyne =\n    data.gynecologicalDiagnosis || [];\n\n  if (mappedGyne.length === 0) {\n    issues.push(\n      \"Gyne case has no confirmed POGS gynecologicalDiagnosis mapping\"\n    );\n  }\n}\n\n\n// --------------------------------------------------\n// Pregnancy-specific validation\n//\n// Pregnancy-specific required rules are handled by\n// a separate pregnancy rules/workflow.\n//\n// Until that separate validation is implemented and\n// explicitly confirms the case, pregnancy cases must\n// NOT enter the POGS write branch.\n// --------------------------------------------------\n\nif (data.isPregnancy === true) {\n  issues.push(\n    \"Pregnancy-specific POGS validation pending\"\n  );\n}\n\n\n// --------------------------------------------------\n// Unresolved clinical terms\n//\n// These remain warnings unless a separate rule\n// specifically makes them required.\n// --------------------------------------------------\n\nfor (\n  const item of\n  data.unresolvedDiagnoses || []\n) {\n  warnings.push(\n    `Unresolved clinical term: ${item.sourceLabel}`\n  );\n}\n\n\n// --------------------------------------------------\n// Final validation state\n// --------------------------------------------------\n\nconst readyForPOGS =\n  issues.length === 0;\n\nreturn {\n  json: {\n    ...data,\n\n    validation: {\n      readyForPOGS,\n      needsReview:\n        !readyForPOGS,\n      issues,\n      warnings\n    }\n  }\n};"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3360,
-        -1568
-      ],
-      "id": "c49fe0b1-ff28-482a-9267-9dde70934980",
-      "name": "Validate POGS Candidate"
+        "jsCode": "const text = $json.documentText || '';\n\nfunction clean(value) {\n  return (value || '')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfunction sectionBetween(startPattern, endPattern) {\n  const start = text.search(startPattern);\n\n  if (start === -1) {\n    return '';\n  }\n\n  const afterStart = text.slice(start);\n  const end = afterStart.search(endPattern);\n\n  if (end === -1) {\n    return clean(afterStart);\n  }\n\n  return clean(\n    afterStart.slice(0, end)\n  );\n}\n\n\n// --------------------------------------------------\n// Flexible date extraction\n// Supports:\n// M/D/YYYY\n// MM/DD/YYYY\n// M-D-YYYY\n// MM-DD-YYYY\n//\n// Returns normalized MM/DD/YYYY\n// --------------------------------------------------\n\nfunction findDateNearLabel(\n  labelPattern,\n  maxChars = 180\n) {\n  const labelMatch =\n    text.match(labelPattern);\n\n  if (\n    !labelMatch ||\n    labelMatch.index === undefined\n  ) {\n    return null;\n  }\n\n  const nearby =\n    text.slice(\n      labelMatch.index,\n      labelMatch.index + maxChars\n    );\n\n  const dateMatch =\n    nearby.match(\n      /\\b(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{4})\\b/\n    );\n\n  if (!dateMatch) {\n    return null;\n  }\n\n  const month =\n    dateMatch[1].padStart(2, '0');\n\n  const day =\n    dateMatch[2].padStart(2, '0');\n\n  const year =\n    dateMatch[3];\n\n  return `${month}/${day}/${year}`;\n}\n\n\n// --------------------------------------------------\n// Patient demographics\n// --------------------------------------------------\n\nconst nameMatch =\n  text.match(\n    /Name\\s*\\|\\s*:\\s*\\|\\s*([^|\\n]+)/i\n  );\n\nconst hospitalMatch =\n  text.match(\n    /Hospital Number\\s*\\|\\s*:\\s*\\|\\s*([0-9]+)/i\n  );\n\nconst addressMatch =\n  text.match(\n    /Address\\s*\\|\\s*:\\s*\\|\\s*([^|]+?)\\s*\\|\\s*(?:Birthday|Birthdate|Birth\\s*Date|Date\\s+of\\s+Birth|DOB)/i\n  );\n\n\n// --------------------------------------------------\n// Birth date\n//\n// Supports common labels:\n// Birthday\n// Birthdate\n// Birth Date\n// Date of Birth\n// DOB\n// --------------------------------------------------\n\nconst birthDate =\n  findDateNearLabel(\n    /\\b(?:Birthday|Birthdate|Birth\\s*Date|Date\\s+of\\s+Birth|DOB)\\b/i\n  );\n\n\n// --------------------------------------------------\n// Age / Sex\n//\n// Independent from birth-date extraction so a\n// layout difference does not cause all three fields\n// to fail together.\n//\n// Example:\n// Birthdate | 07/01/1990 | 36 / F\n// --------------------------------------------------\n\nconst ageSexMatch =\n  text.match(\n    /\\b(?:Birthday|Birthdate|Birth\\s*Date|Date\\s+of\\s+Birth|DOB)\\b[\\s\\S]{0,180}?\\b(\\d{1,3})\\s*\\/\\s*([MF])\\b/i\n  );\n\n\n// --------------------------------------------------\n// Admission / discharge dates\n// --------------------------------------------------\n\nconst admissionDate =\n  findDateNearLabel(\n    /Date\\s+of\\s+Admission/i\n  );\n\nconst dischargeDate =\n  findDateNearLabel(\n    /Date\\s+of\\s+Discharge/i\n  );\n\n\n// --------------------------------------------------\n// Admission time\n// --------------------------------------------------\n\nconst admissionTimeMatch =\n  text.match(\n    /Time\\s+of\\s+Admission[\\s|:]*([0-9]{1,2}(?::[0-9]{2})?\\s*(?:AM|PM|am|pm)?)/i\n  );\n\n\n// --------------------------------------------------\n// Obstetric score\n//\n// Example:\n// G4 P3 (3-0-0-3)\n// --------------------------------------------------\n\nconst obIndexMatch =\n  text.match(\n    /\\bG(\\d+)\\s*P(\\d+)\\s*\\((\\d+)-(\\d+)-(\\d+)-(\\d+)\\)/i\n  );\n\n\n// --------------------------------------------------\n// Medical history\n// --------------------------------------------------\n\nconst hasChronicHypertension =\n  /\\(\\+\\)\\s*Chronic hypertension/i\n    .test(text);\n\nconst diabetesNegative =\n  /Diabetes mellitus\\s*\\|\\s*\\(-\\)/i\n    .test(text);\n\nconst asthmaNegative =\n  /Bronchial asthma\\s*\\|\\s*\\(-\\)/i\n    .test(text);\n\nconst thyroidNegative =\n  /Thyroid disease\\s*\\|\\s*\\(-\\)/i\n    .test(text);\n\n\n// --------------------------------------------------\n// Vitals\n// --------------------------------------------------\n\nconst bpMatch =\n  text.match(\n    /BP:\\s*([0-9]+\\/[0-9]+)\\s*mmHg/i\n  );\n\nconst hrMatch =\n  text.match(\n    /HR:\\s*([0-9]+)\\s*bpm/i\n  );\n\nconst rrMatch =\n  text.match(\n    /RR:\\s*([0-9]+)\\s*cpm/i\n  );\n\nconst o2Match =\n  text.match(\n    /O2 Sat:\\s*([0-9]+)%/i\n  );\n\nconst tempMatch =\n  text.match(\n    /Temp:\\s*([0-9.]+)°?C/i\n  );\n\n\n// --------------------------------------------------\n// Measurements\n// --------------------------------------------------\n\nconst weightMatch =\n  text.match(\n    /Weight:\\s*([0-9]+(?:\\.[0-9]+)?)\\s*kg/i\n  );\n\nconst heightMatch =\n  text.match(\n    /Height:\\s*([0-9]+(?:\\.[0-9]+)?)\\s*cm/i\n  );\n\n\n// --------------------------------------------------\n// Output\n// --------------------------------------------------\n\nreturn {\n  json: {\n\n    runContext:\n      $json.runContext ?? {\n        mode: 'LIVE',\n        rawCaseId: null,\n        aiPolicy: 'AUTO'\n      },\n\n    sourceTitle:\n      $json.title ?? null,\n\n    patient: {\n\n      name:\n        clean(\n          nameMatch?.[1]\n        ),\n\n      hospitalNumber:\n        clean(\n          hospitalMatch?.[1]\n        ),\n\n      address:\n        clean(\n          addressMatch?.[1]\n        ),\n\n      birthDate,\n\n      age:\n        ageSexMatch\n          ? Number(\n              ageSexMatch[1]\n            )\n          : null,\n\n      sex:\n        ageSexMatch?.[2]\n          ?.toUpperCase() ??\n        null\n    },\n\n\n    admission: {\n\n      date:\n        admissionDate,\n\n      time:\n        clean(\n          admissionTimeMatch?.[1]\n        ) || null,\n\n      dischargeDate\n    },\n\n\n    obstetric: {\n\n      gravida:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[1]\n            )\n          : null,\n\n      para:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[2]\n            )\n          : null,\n\n      fullTerm:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[3]\n            )\n          : null,\n\n      preterm:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[4]\n            )\n          : null,\n\n      abortion:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[5]\n            )\n          : null,\n\n      living:\n        obIndexMatch\n          ? Number(\n              obIndexMatch[6]\n            )\n          : null\n    },\n\n\n    medicalHistory: {\n\n      chronicHypertension:\n        hasChronicHypertension,\n\n      diabetesMellitus:\n        diabetesNegative\n          ? false\n          : null,\n\n      bronchialAsthma:\n        asthmaNegative\n          ? false\n          : null,\n\n      thyroidDisease:\n        thyroidNegative\n          ? false\n          : null\n    },\n\n\n    vitals: {\n\n      bloodPressure:\n        bpMatch?.[1] ??\n        null,\n\n      heartRate:\n        hrMatch\n          ? Number(\n              hrMatch[1]\n            )\n          : null,\n\n      respiratoryRate:\n        rrMatch\n          ? Number(\n              rrMatch[1]\n            )\n          : null,\n\n      oxygenSaturation:\n        o2Match\n          ? Number(\n              o2Match[1]\n            )\n          : null,\n\n      temperatureC:\n        tempMatch\n          ? Number(\n              tempMatch[1]\n            )\n          : null\n    },\n\n\n    measurements: {\n\n      weightKg:\n        weightMatch\n          ? Number(\n              weightMatch[1]\n            )\n          : null,\n\n      heightCm:\n        heightMatch\n          ? Number(\n              heightMatch[1]\n            )\n          : null\n    },\n\n    clinicalFacts: {\n      currentPregnancyDelivered:\n        null,\n    \n      deliveryDate:\n        null,\n    \n      deliveryMannerText:\n        null,\n    \n      pregnancyTypeText:\n        null,\n    \n      admissionAOGWeeks:\n        null,\n    \n      admissionAOGDays:\n        null,\n    \n      comorbidityTerms:\n        [],\n    \n      procedureTerms:\n        [],\n    \n      neonatalFacts:\n        []\n    }\n\n\n    sections: {\n\n      reasonForAdmission:\n        sectionBetween(\n          /REASON FOR ADMISSION:/i,\n          /HISTORY OF PRESENT ILLNESS/i\n        ),\n\n      historyOfPresentIllness:\n        sectionBetween(\n          /HISTORY OF PRESENT ILLNESS/i,\n          /Pertinent Past Medical History:/i\n        ),\n\n      finalDiagnosis:\n        sectionBetween(\n          /Final Diagnosis/i,\n          /Physicians-in-Charge/i\n        ),\n\n      courseInWard:\n        sectionBetween(\n          /COURSE IN THE WARD/i,\n          /SURGICAL PROCEDURE/i\n        )\n    }\n  }\n};"
+      }
     },
     {
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const data = $json;\n\n// Use the clinical text that we already extracted.\n// Combine the most useful sections so classification is explainable.\nconst text = [\n  data.sections?.reasonForAdmission,\n  data.sections?.historyOfPresentIllness,\n  data.sections?.finalDiagnosis\n]\n  .filter(Boolean)\n  .join(' ')\n  .toLowerCase();\n\nconst reasons = [];\n\n/*\n * PREGNANCY\n *\n * Only mark true when there is reasonably explicit evidence of\n * a current pregnancy.\n */\nconst pregnancyPatterns = [\n  /\\bcurrent pregnancy\\b/i,\n  /\\bpregnancy uterine\\b/i,\n  /\\bpregnant\\b/i,\n  /\\bage of gestation\\b/i,\n  /\\baog\\b/i,\n  /\\bweeks? (?:and \\d+ days? )?(?:age of gestation|aog)\\b/i,\n  /\\bfetal\\b/i,\n  /\\bfht\\b/i\n];\n\nlet isPregnancy = pregnancyPatterns.some(pattern => pattern.test(text));\n\nif (isPregnancy) {\n  reasons.push(\"Current-pregnancy terminology found\");\n}\n\n/*\n * GYNE\n *\n * Use explicit gynecologic diagnoses/conditions rather than simply\n * assuming every female OB-GYN admission is a gyne case.\n */\nconst gynePatterns = [\n  /\\babnormal uterine bleeding\\b/i,\n  /\\bmyoma\\b/i,\n  /\\bfibroid\\b/i,\n  /\\bendometrial\\b/i,\n  /\\bmenorrhagia\\b/i,\n  /\\bmetrorrhagia\\b/i,\n  /\\bamenorrhea\\b/i,\n  /\\bdysmenorrhea\\b/i,\n  /\\bovarian\\b/i,\n  /\\bovary\\b/i,\n  /\\bcervical\\b/i,\n  /\\bcervix\\b/i,\n  /\\bvaginal bleeding\\b/i,\n  /\\bgynecologic\\b/i,\n  /\\bgynecological\\b/i\n];\n\nlet isGyne = gynePatterns.some(pattern => pattern.test(text));\n\nif (isGyne) {\n  reasons.push(\"Gynecologic diagnosis/condition terminology found\");\n}\n\n/*\n * POSTPARTUM\n *\n * Require relatively explicit postpartum/puerperium evidence.\n */\nconst postpartumPatterns = [\n  /\\bpostpartum\\b/i,\n  /\\bpost-partum\\b/i,\n  /\\bpuerperal\\b/i,\n  /\\bpost delivery\\b/i,\n  /\\bpost-delivery\\b/i,\n  /\\bstatus post delivery\\b/i,\n  /\\bs\\/p delivery\\b/i\n];\n\nlet isPostpartum = postpartumPatterns.some(pattern => pattern.test(text));\n\nif (isPostpartum) {\n  reasons.push(\"Postpartum/puerperium terminology found\");\n}\n\n/*\n * Negative current-pregnancy evidence.\n *\n * A negative pregnancy test can support false, but only when there is\n * no stronger explicit current-pregnancy evidence.\n */\nconst fullText = JSON.stringify(data).toLowerCase();\n\nconst pregnancyTestNegative =\n  /pregnancy test[^a-z0-9]*negative/i.test(fullText);\n\nif (!isPregnancy && pregnancyTestNegative) {\n  reasons.push(\"Pregnancy test documented as negative\");\n}\n\n/*\n * Do not force a classification if the text is ambiguous.\n *\n * null means \"needs review\", which is safer than guessing.\n */\nif (!isPregnancy && !isGyne && !isPostpartum) {\n  isPregnancy = null;\n  isGyne = null;\n  isPostpartum = null;\n\n  reasons.push(\"No sufficiently explicit case-type evidence found\");\n}\n\nreturn {\n  json: {\n    ...data,\n\n    classification: {\n      isPregnancy,\n      isGyne,\n      isPostpartum,\n      pregnancyTestNegative,\n      reasons\n    }\n  }\n};"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2464,
-        -1568
-      ],
-      "id": "df2ff492-066d-4fa7-a0c0-966ec41e4b7a",
-      "name": "Classify Case Type"
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const data = $json;\n\nconst diagnosisText =\n  data.sections?.finalDiagnosis || '';\n\nconst normalized = diagnosisText\n  .replace(/^Final Diagnosis\\s*\\|\\s*:\\s*\\|?/i, '')\n  .replace(/\\|\\s*\\|\\s*\\|/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst terms = [];\n\n// Deterministic recognizers only.\n// These produce human-readable concepts, not POGS IDs.\n\nconst patterns = [\n  {\n    key: 'abnormalUterineBleeding',\n    label: 'Abnormal uterine bleeding',\n    regex: /\\babnormal uterine bleeding\\b/i\n  },\n  {\n    key: 'submucousMyoma',\n    label: 'Prolapsed submucous myoma',\n    regex: /\\bprolapsed submucous myoma\\b/i\n  },\n  {\n    key: 'endometrialThickening',\n    label: 'Endometrial thickening',\n    regex: /\\bendometrial thickening\\b/i\n  },\n  {\n    key: 'anemia',\n    label: 'Anemia',\n    regex: /\\banemia\\b/i\n  },\n  {\n    key: 'acuteBloodLoss',\n    label: 'Acute blood loss',\n    regex: /\\bacute blood loss\\b/i\n  },\n  {\n    key: 'obesity',\n    label: 'Obesity',\n    regex: /\\bobese\\b|\\bobesity\\b/i\n  },\n  {\n    key: 'bloodTransfusion',\n    label: 'Status post blood transfusion',\n    regex: /\\bs\\/p blood transfusion\\b/i\n  },\n  {\n    key: 'endometrialSampling',\n    label: 'Status post ultrasound guided endometrial sampling',\n    regex: /\\bendometrial sampling\\b/i\n  },\n  {\n    key: 'dmpa',\n    label: 'Status post DMPA injection',\n    regex: /\\bdmpa injection\\b/i\n  }\n];\n\nfor (const item of patterns) {\n  if (item.regex.test(normalized)) {\n    terms.push({\n      key: item.key,\n      label: item.label,\n      matched: true\n    });\n  }\n}\n\nreturn {\n  json: {\n    ...data,\n\n    diagnosisExtraction: {\n      raw: diagnosisText,\n      normalized,\n      terms\n    }\n  }\n};"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2688,
-        -1568
-      ],
-      "id": "cd795e34-478e-4792-bfce-e7c84369958e",
-      "name": "Extract Diagnosis Terms"
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const data = $json;\n\nconst lookup = {\n  abnormalUterineBleeding: {\n    status: \"unmapped\",\n    reason: \"No exact POGS gynecologicalDiagnosis reference confirmed\"\n  },\n\n  submucousMyoma: {\n    status: \"mapped\",\n    categoryId: 12,\n    conditionId: 114,\n    gyneStage: 6\n  },\n\n  endometrialThickening: {\n    status: \"unmapped\",\n    reason: \"POGS has Endometrial hyperplasia, unspecified, but source only says endometrial thickening\"\n  },\n\n  anemia: {\n    status: \"unmapped\",\n    reason: \"Not a gynecologicalDiagnosis mapping\"\n  },\n\n  acuteBloodLoss: {\n    status: \"unmapped\",\n    reason: \"Not a gynecologicalDiagnosis mapping\"\n  },\n\n  obesity: {\n    status: \"unmapped\",\n    reason: \"Not a gynecologicalDiagnosis mapping\"\n  },\n\n  bloodTransfusion: {\n    status: \"ignored\",\n    reason: \"Treatment/procedure, not gynecologicalDiagnosis\"\n  },\n\n  endometrialSampling: {\n    status: \"ignored\",\n    reason: \"Procedure, not gynecologicalDiagnosis\"\n  },\n\n  dmpa: {\n    status: \"ignored\",\n    reason: \"Medication/intervention, not gynecologicalDiagnosis\"\n  }\n};\n\nconst mapped = [];\nconst unresolved = [];\nconst ignored = [];\n\nfor (const term of data.diagnosisExtraction?.terms || []) {\n\n  const ref = lookup[term.key];\n\n  if (!ref) {\n    unresolved.push({\n      sourceKey: term.key,\n      sourceLabel: term.label,\n      reason: \"No mapping rule defined\"\n    });\n\n    continue;\n  }\n\n  if (ref.status === \"mapped\") {\n\n    mapped.push({\n      sourceKey: term.key,\n      sourceLabel: term.label,\n\n      categoryId: ref.categoryId,\n      conditionId: ref.conditionId,\n      gyneStage: ref.gyneStage\n    });\n\n  } else if (ref.status === \"ignored\") {\n\n    ignored.push({\n      sourceKey: term.key,\n      sourceLabel: term.label,\n      reason: ref.reason\n    });\n\n  } else {\n\n    unresolved.push({\n      sourceKey: term.key,\n      sourceLabel: term.label,\n      reason: ref.reason\n    });\n  }\n}\n\nreturn {\n  json: {\n    ...data,\n\n    pogsDiagnosisMapping: {\n      mapped,\n      unresolved,\n      ignored,\n\n      // Important:\n      // unresolved terms do NOT necessarily mean the whole case\n      // cannot go to POGS. Some terms simply belong elsewhere.\n      complete: unresolved.length === 0\n    }\n  }\n};"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2912,
-        -1568
-      ],
-      "id": "0784573a-9fce-4549-bc8e-f5bbc50a8423",
-      "name": "Map Diagnosis to POGS References"
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "function extractParagraph(paragraph) {\n  if (!paragraph?.elements) return '';\n\n  return paragraph.elements\n    .map(el => el.textRun?.content || '')\n    .join('');\n}\n\nfunction extractStructuralElements(elements) {\n  let output = '';\n\n  for (const element of elements || []) {\n\n    // Normal paragraph\n    if (element.paragraph) {\n      output += extractParagraph(element.paragraph);\n    }\n\n    // Table\n    if (element.table) {\n      for (const row of element.table.tableRows || []) {\n\n        const cells = [];\n\n        for (const cell of row.tableCells || []) {\n          const cellText = extractStructuralElements(cell.content)\n            .replace(/\\n+/g, ' ')\n            .trim();\n\n          cells.push(cellText);\n        }\n\n        // Preserve columns in a readable way\n        output += cells.join(' | ') + '\\n';\n      }\n    }\n\n    // Table of contents, if one exists\n    if (element.tableOfContents) {\n      output += extractStructuralElements(\n        element.tableOfContents.content\n      );\n    }\n  }\n\n  return output;\n}\n\nconst document = $json;\n\nconst documentText = extractStructuralElements(\n  document.body?.content\n)\n  .replace(/[ \\t]+\\n/g, '\\n')\n  .replace(/\\n{3,}/g, '\\n\\n')\n  .trim();\n\nreturn {\n  json: {\n    title: document.title,\n    documentText,\n\n    runContext:\n      document.__runContext ?? {\n        mode: \"LIVE\",\n        rawCaseId: null\n      }\n  }\n};"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2016,
-        -1568
-      ],
       "id": "14ec06a3-6135-4d0c-b0c8-3b53e366ae39",
-      "name": "Normalize Data"
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all();\n\nif (items.length === 0) {\n  throw new Error(\"No raw case files found\");\n}\n\nconst output = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i];\n\n  const binaryKeys =\n    Object.keys(item.binary ?? {});\n\n  if (binaryKeys.length === 0) {\n    throw new Error(\n      `Raw case item ${i} has no binary file`\n    );\n  }\n\n  const binaryPropertyName =\n    binaryKeys[0];\n\n  const buffer =\n    await this.helpers.getBinaryDataBuffer(\n      i,\n      binaryPropertyName\n    );\n\n  const text =\n    buffer.toString(\"utf8\");\n\n  let record;\n\n  try {\n    record = JSON.parse(text);\n  } catch (error) {\n    throw new Error(\n      `Raw case item ${i} is invalid JSON: ${error.message}`\n    );\n  }\n\n  if (!record.googleDoc) {\n    throw new Error(\n      `Raw case item ${i} does not contain googleDoc`\n    );\n  }\n\n  output.push({\n    json: {\n      ...record.googleDoc,\n\n      __runContext: {\n        mode: \"LIVE\",\n        rawCaseId:\n          record.rawCaseId ?? null\n      }\n    },\n\n    pairedItem: {\n      item: i\n    }\n  });\n}\n\nreturn output;"
-      },
+      "name": "Normalize Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1792,
-        -1664
+        2096,
+        -1824
       ],
-      "id": "530a8e4f-2d60-4090-8963-84c9fb74aa54",
-      "name": "Load Raw Case"
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function extractParagraph(paragraph) {\n  if (!paragraph?.elements) return '';\n\n  return paragraph.elements\n    .map(el => el.textRun?.content || '')\n    .join('');\n}\n\nfunction extractStructuralElements(elements) {\n  let output = '';\n\n  for (const element of elements || []) {\n\n    // Normal paragraph\n    if (element.paragraph) {\n      output += extractParagraph(element.paragraph);\n    }\n\n    // Table\n    if (element.table) {\n      for (const row of element.table.tableRows || []) {\n\n        const cells = [];\n\n        for (const cell of row.tableCells || []) {\n          const cellText = extractStructuralElements(cell.content)\n            .replace(/\\n+/g, ' ')\n            .trim();\n\n          cells.push(cellText);\n        }\n\n        // Preserve columns in a readable way\n        output += cells.join(' | ') + '\\n';\n      }\n    }\n\n    // Table of contents, if one exists\n    if (element.tableOfContents) {\n      output += extractStructuralElements(\n        element.tableOfContents.content\n      );\n    }\n  }\n\n  return output;\n}\n\nconst document = $json;\n\nconst documentText = extractStructuralElements(\n  document.body?.content\n)\n  .replace(/[ \\t]+\\n/g, '\\n')\n  .replace(/\\n{3,}/g, '\\n\\n')\n  .trim();\n\nreturn {\n  json: {\n    title: document.title,\n    documentText,\n\n    runContext:\n      document.__runContext ?? {\n        mode: \"LIVE\",\n        rawCaseId: null,\n        aiPolicy: \"AUTO\"\n      }\n  }\n};"
+      }
     },
     {
+      "id": "530a8e4f-2d60-4090-8963-84c9fb74aa54",
+      "name": "Load Raw Case",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1872,
+        -1824
+      ],
       "parameters": {
-        "fileSelector": "/data/cases/raw_cases/new/*.json",
-        "options": {}
-      },
+        "mode": "runOnceForEachItem",
+        "jsCode": "const binaryKeys =\n  Object.keys($binary ?? {});\n\nif (binaryKeys.length === 0) {\n  throw new Error(\n    \"Raw case has no binary file\"\n  );\n}\n\nconst binaryProperty =\n  binaryKeys[0];\n\nconst buffer =\n  await this.helpers\n    .getBinaryDataBuffer(\n      $itemIndex,\n      binaryProperty\n    );\n\nlet record;\n\ntry {\n  record =\n    JSON.parse(\n      buffer.toString(\"utf8\")\n    );\n} catch (error) {\n  throw new Error(\n    `Invalid raw case JSON: ${error.message}`\n  );\n}\n\nif (!record.googleDoc) {\n  throw new Error(\n    \"Raw case does not contain googleDoc\"\n  );\n}\n\nif (!record.rawCaseId) {\n  throw new Error(\n    \"Raw case does not contain rawCaseId\"\n  );\n}\n\nlet requestContext = null;\n\ntry {\n  requestContext =\n    $(\"Validate Processing Request\")\n      .item\n      .json;\n} catch (error) {\n  requestContext = null;\n}\n\nreturn {\n  json: {\n    ...record.googleDoc,\n\n    __runContext: {\n      mode:\n        requestContext?.mode ??\n        \"LIVE\",\n      rawCaseId:\n        requestContext?.rawCaseId ??\n        record.rawCaseId,\n\n      sourceQueue:\n        requestContext?.sourceQueue ??\n        \"new\",\n\n      aiPolicy:\n        requestContext?.aiPolicy ??\n        \"AUTO\"\n    }\n  }\n};"
+      }
+    },
+    {
+      "id": "97d5fb73-bacf-4714-8064-02df17855ecb",
+      "name": "Read New Raw Case File",
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
       "position": [
-        1568,
-        -1664
+        1648,
+        -1728
       ],
-      "id": "97d5fb73-bacf-4714-8064-02df17855ecb",
-      "name": "Read New Raw Case File"
+      "parameters": {
+        "fileSelector": "/data/cases/raw_cases/new/*.json",
+        "options": {}
+      }
     },
     {
+      "id": "7085bcc7-dde8-43f0-b95f-33f7967a916c",
+      "name": "Candidate Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        4784,
+        -1824
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "55675f59-3c0e-4390-90a4-daabc1aaf297",
+              "leftValue": "={{\n  $json.validation?.readyForPOGS === true\n  &&\n  $json.runContext?.mode === \"LIVE\"\n}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "7ddec283-2e53-4bcf-bfb4-65602e3c4829",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        -1920
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "142113e9-9b7b-4062-b40f-8161498bcee0",
+      "name": "Validate Processing Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        -1920
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d = $json;\n\nif (!d.rawCaseId) {\n  throw new Error(\n    \"Missing rawCaseId\"\n  );\n}\n\nif (\n  !/^RAW-DOC-[a-f0-9]+$/i.test(\n    d.rawCaseId\n  )\n) {\n  throw new Error(\n    \"Invalid rawCaseId\"\n  );\n}\n\nconst sourceQueue =\n  d.sourceQueue ?? \"new\";\n\nif (\n  ![\n    \"new\",\n    \"for_checking\",\n    \"gaps\",\n    \"completed\"\n  ].includes(sourceQueue)\n) {\n  throw new Error(\n    `Invalid sourceQueue: ${sourceQueue}`\n  );\n}\n\nconst mode =\n  d.mode ?? \"LIVE\";\n\nif (\n  ![\"LIVE\", \"REGRESSION\"].includes(mode)\n) {\n  throw new Error(\n    `Invalid mode: ${mode}`\n  );\n}\n\nconst aiPolicy =\n  d.aiPolicy ?? \"AUTO\";\n\nif (\n  ![\"AUTO\", \"DISABLED\", \"FORCE\"].includes(\n    aiPolicy\n  )\n) {\n  throw new Error(\n    `Invalid aiPolicy: ${aiPolicy}`\n  );\n}\n\nreturn {\n  json: {\n    rawCaseId: d.rawCaseId,\n    sourceQueue,\n    mode,\n    aiPolicy\n  }\n};"
+      }
+    },
+    {
+      "id": "8679e6ec-efff-4f26-874c-daabb7383fee",
+      "name": "Read Requested Raw Case",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1648,
+        -1920
+      ],
+      "parameters": {
+        "fileSelector": "={{  \"/data/cases/raw_cases/\" +  $json.sourceQueue +  \"/\" +  $json.rawCaseId +  \".json\"}}",
+        "options": {}
+      }
+    },
+    {
+      "id": "df2ff492-066d-4fa7-a0c0-966ec41e4b7a",
+      "name": "Deterministic Case Classification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2544,
+        -1824
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $json;\n\n// Use the clinical text that we already extracted.\n// Combine the most useful sections so classification is explainable.\nconst text = [\n  data.sections?.reasonForAdmission,\n  data.sections?.historyOfPresentIllness,\n  data.sections?.finalDiagnosis\n]\n  .filter(Boolean)\n  .join(' ')\n  .toLowerCase();\n\nconst reasons = [];\n\n/*\n * PREGNANCY\n *\n * Only mark true when there is reasonably explicit evidence of\n * a current pregnancy.\n */\nconst pregnancyPatterns = [\n  /\\bcurrent pregnancy\\b/i,\n  /\\bpregnancy uterine\\b/i,\n  /\\bpregnant\\b/i,\n  /\\bage of gestation\\b/i,\n  /\\baog\\b/i,\n  /\\bweeks? (?:and \\d+ days? )?(?:age of gestation|aog)\\b/i,\n  /\\bfetal\\b/i,\n  /\\bfht\\b/i\n];\n\nlet isPregnancy = pregnancyPatterns.some(pattern => pattern.test(text));\n\nif (isPregnancy) {\n  reasons.push(\"Current-pregnancy terminology found\");\n}\n\n/*\n * GYNE\n *\n * Use explicit gynecologic diagnoses/conditions rather than simply\n * assuming every female OB-GYN admission is a gyne case.\n */\nconst gynePatterns = [\n  /\\babnormal uterine bleeding\\b/i,\n  /\\bmyoma\\b/i,\n  /\\bfibroid\\b/i,\n  /\\bendometrial\\b/i,\n  /\\bmenorrhagia\\b/i,\n  /\\bmetrorrhagia\\b/i,\n  /\\bamenorrhea\\b/i,\n  /\\bdysmenorrhea\\b/i,\n  /\\bovarian\\b/i,\n  /\\bovary\\b/i,\n  /\\bcervical\\b/i,\n  /\\bcervix\\b/i,\n  /\\bvaginal bleeding\\b/i,\n  /\\bgynecologic\\b/i,\n  /\\bgynecological\\b/i\n];\n\nlet isGyne = gynePatterns.some(pattern => pattern.test(text));\n\nif (isGyne) {\n  reasons.push(\"Gynecologic diagnosis/condition terminology found\");\n}\n\n/*\n * POSTPARTUM\n *\n * Require relatively explicit postpartum/puerperium evidence.\n */\nconst postpartumPatterns = [\n  /\\bpostpartum\\b/i,\n  /\\bpost-partum\\b/i,\n  /\\bpuerperal\\b/i,\n  /\\bpost delivery\\b/i,\n  /\\bpost-delivery\\b/i,\n  /\\bstatus post delivery\\b/i,\n  /\\bs\\/p delivery\\b/i\n];\n\nlet isPostpartum = postpartumPatterns.some(pattern => pattern.test(text));\n\nif (isPostpartum) {\n  reasons.push(\"Postpartum/puerperium terminology found\");\n}\n\n/*\n * Negative current-pregnancy evidence.\n *\n * A negative pregnancy test can support false, but only when there is\n * no stronger explicit current-pregnancy evidence.\n */\nconst fullText = JSON.stringify(data).toLowerCase();\n\nconst pregnancyTestNegative =\n  /pregnancy test[^a-z0-9]*negative/i.test(fullText);\n\nif (!isPregnancy && pregnancyTestNegative) {\n  reasons.push(\"Pregnancy test documented as negative\");\n}\n\n/*\n * Do not force a classification if the text is ambiguous.\n *\n * null means \"needs review\", which is safer than guessing.\n */\nif (!isPregnancy && !isGyne && !isPostpartum) {\n  isPregnancy = null;\n  isGyne = null;\n  isPostpartum = null;\n\n  reasons.push(\"No sufficiently explicit case-type evidence found\");\n}\n\nreturn {\n  json: {\n    ...data,\n\n    classification: {\n      isPregnancy,\n      isGyne,\n      isPostpartum,\n    \n      currentPregnancyDelivered:\n        isPostpartum === true\n          ? true\n          : null,\n    \n      pregnancyTestNegative,\n    \n      reasons\n    }\n  }\n};"
+      }
+    },
+    {
+      "id": "8b676650-a615-40de-ac03-414e55495b5d",
+      "name": "Deterministic Delivery Evidence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        -1824
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d = $json;\n\nconst text = [\n  d.sections?.reasonForAdmission,\n  d.sections?.historyOfPresentIllness,\n  d.sections?.finalDiagnosis,\n  d.sections?.courseInWard\n]\n  .filter(Boolean)\n  .join(\"\\n\")\n  .toLowerCase();\n\nconst evidence = [];\n\nconst patterns = [\n  {\n    label: \"explicit postpartum\",\n    regex:\n      /\\bpostpartum\\b|\\bpuerper/i\n  },\n  {\n    label: \"status post delivery\",\n    regex:\n      /\\bstatus post delivery\\b|\\bs\\/p delivery\\b/i\n  },\n  {\n    label: \"explicit delivered\",\n    regex:\n      /\\bpatient delivered\\b|\\bwas delivered\\b|\\bdelivered via\\b/i\n  },\n  {\n    label: \"cesarean delivery\",\n    regex:\n      /\\b(?:s\\/p|status post)\\s+(?:primary |repeat )?(?:cesarean|caesarean|cs)\\b/i\n  },\n  {\n    label: \"vaginal delivery\",\n    regex:\n      /\\b(?:s\\/p|status post)\\s+(?:normal spontaneous delivery|nsd|vaginal delivery)\\b/i\n  }\n];\n\nfor (const p of patterns) {\n  if (p.regex.test(text)) {\n    evidence.push(p.label);\n  }\n}\n\nconst explicitlyDelivered =\n  evidence.length > 0;\n\nreturn {\n  json: {\n    ...d,\n\n    deliveryState: {\n      currentPregnancyDelivered:\n        explicitlyDelivered\n          ? true\n          : null,\n\n      evidence\n    }\n  }\n};"
+      }
+    },
+    {
+      "id": "45bff710-9939-4f10-9d79-faad8f6e37ad",
+      "name": "Determine AI Need",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2992,
+        -1824
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d = $json;\n\nconst requestedAiPolicy =\n  d.runContext?.aiPolicy ??\n  \"AUTO\";\n\nconst needsAIByData =\n  d.classification\n    ?.isPregnancy == null ||\n\n  d.classification\n    ?.isGyne == null ||\n\n  (\n    d.classification\n      ?.isPregnancy === true &&\n    d.deliveryState\n      ?.currentPregnancyDelivered == null\n  );\n\nconst reasons = [];\n\nif (\n  d.classification\n    ?.isPregnancy == null\n) {\n  reasons.push(\n    \"pregnancy classification unresolved\"\n  );\n}\n\nif (\n  d.classification\n    ?.isGyne == null\n) {\n  reasons.push(\n    \"gyne classification unresolved\"\n  );\n}\n\nif (\n  d.classification\n    ?.isPregnancy === true &&\n  d.deliveryState\n    ?.currentPregnancyDelivered == null\n) {\n  reasons.push(\n    \"current pregnancy delivery state unresolved\"\n  );\n}\n\nlet needsAI =\n  needsAIByData;\n\nif (\n  requestedAiPolicy === \"DISABLED\"\n) {\n  needsAI = false;\n  reasons.unshift(\n    \"AI disabled by policy\"\n  );\n}\n\nif (\n  requestedAiPolicy === \"FORCE\"\n) {\n  needsAI = true;\n  reasons.unshift(\n    \"AI forced by policy\"\n  );\n}\n\n\nreturn {\n  json: {\n    ...d,\n\n    aiRouting: {\n      policy: requestedAiPolicy,\n      needsAIByData,\n      needsAI,\n      reasons\n    }\n  }\n};"
+      }
+    },
+    {
+      "id": "1bc80407-05d0-455c-9c40-37d57b4cdb07",
+      "name": "Prepare AI Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3440,
+        -1920
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d = $json;\n\nconst clinicalText = [\n  d.sections\n    ?.reasonForAdmission,\n  d.sections\n    ?.historyOfPresentIllness,\n  d.sections\n    ?.finalDiagnosis,\n  d.sections\n    ?.courseInWard\n]\n  .filter(Boolean)\n  .join(\"\\n\\n\");\n\nreturn {\n  json: {\n    originalCase:\n      d,\n\n    aiRequest: {\n      clinicalText,\n\n      knownFacts: {\n        isPregnancy:\n          d.classification\n            ?.isPregnancy ?? null,\n\n        isGyne:\n          d.classification\n            ?.isGyne ?? null,\n\n        isPostpartum:\n          d.classification\n            ?.isPostpartum ?? null,\n\n        currentPregnancyDelivered:\n          d.deliveryState\n            ?.currentPregnancyDelivered\n            ?? null,\n\n        obscoreG:\n          d.obstetric\n            ?.gravida ?? null,\n\n        obscoreP:\n          d.obstetric\n            ?.para ?? null,\n\n        obscoreFT:\n          d.obstetric\n            ?.fullTerm ?? null,\n\n        obscorePr:\n          d.obstetric\n            ?.preterm ?? null,\n\n        obscoreAb:\n          d.obstetric\n            ?.abortion ?? null,\n\n        obscoreLB:\n          d.obstetric\n            ?.living ?? null\n      },\n\n      unresolvedTerms:\n        []\n    }\n  }\n};"
+      }
+    },
+    {
+      "id": "1f9a9c60-faca-48c0-b120-cb4377d47960",
+      "name": "Mark AI Not Used",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3888,
+        -1712
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const original = $json;\n\nreturn {\n  json: {\n    originalCase: original,\n\n    aiFacts: {\n      isPregnancy: null,\n      isGyne: null,\n      isPostpartum: null,\n      currentPregnancyDelivered: null,\n      pregnancyTypeText: null,\n      deliveryMannerText: null,\n      deliveryEvidence: [],\n      diagnosisTerms: [],\n      comorbidityTerms: [],\n      procedureTerms: [],\n      uncertainFacts: []\n    },\n\n    aiMeta: {\n      used: false,\n      model: null,\n      responseId: null\n    }\n  }\n};"
+      }
+    },
+    {
+      "id": "f68a3b7d-64bc-4071-aab0-d795c097ee05",
+      "name": "Merge Clinical Facts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4112,
+        -1824
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const original =\n  $json.originalCase;\n\nif (!original) {\n  throw new Error(\n    \"Merge Clinical Facts: originalCase missing\"\n  );\n}\n\nconst ai =\n  $json.aiFacts ?? {};\n\nfunction deterministicFirst(\n  deterministicValue,\n  aiValue\n) {\n  if (\n    deterministicValue !== null &&\n    deterministicValue !== undefined\n  ) {\n    return deterministicValue;\n  }\n\n  return aiValue ?? null;\n}\n\nconst isPregnancy =\n  deterministicFirst(\n    original.classification\n      ?.isPregnancy,\n    ai.isPregnancy\n  );\n\nconst isGyne =\n  deterministicFirst(\n    original.classification\n      ?.isGyne,\n    ai.isGyne\n  );\n\nconst isPostpartum =\n  deterministicFirst(\n    original.classification\n      ?.isPostpartum,\n    ai.isPostpartum\n  );\n\nconst currentPregnancyDelivered =\n  deterministicFirst(\n    original.deliveryState\n      ?.currentPregnancyDelivered,\n    ai.currentPregnancyDelivered\n  );\n\nreturn {\n  json: {\n    ...original,\n\n    classification: {\n      ...original.classification,\n\n      isPregnancy,\n      isGyne,\n      isPostpartum\n    },\n\n    deliveryState: {\n      ...original.deliveryState,\n\n      currentPregnancyDelivered,\n\n      aiEvidence:\n        ai.deliveryEvidence ??\n        []\n    },\n\n    clinicalConcepts: {\n      ...(\n        original.clinicalConcepts ??\n        {}\n      ),\n\n      pregnancyTypeText:\n        deterministicFirst(\n          original.clinicalConcepts\n            ?.pregnancyTypeText,\n          ai.pregnancyTypeText\n        ),\n\n      deliveryMannerText:\n        deterministicFirst(\n          original.clinicalConcepts\n            ?.deliveryMannerText,\n          ai.deliveryMannerText\n        ),\n\n      aiDiagnosisTerms:\n        ai.diagnosisTerms ??\n        [],\n\n      aiComorbidityTerms:\n        ai.comorbidityTerms ??\n        [],\n\n      aiProcedureTerms:\n        ai.procedureTerms ??\n        []\n    },\n\n    aiAssistance: {\n      used:\n        true,\n\n      model:\n        $json.aiMeta\n          ?.model ??\n        null,\n\n      responseId:\n        $json.aiMeta\n          ?.responseId ??\n        null,\n\n      uncertainFacts:\n        ai.uncertainFacts ??\n        []\n    }\n  }\n};"
+      }
+    },
+    {
+      "id": "405c431a-7121-4ac4-903f-a6d5c75c38c5",
+      "name": "Merge with Original",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3888,
+        -1920
+      ],
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {
+          "clashHandling": {
+            "values": {
+              "resolveClash": "preferLast"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "25df0889-143b-4016-a0da-c6d7d1dda966",
+      "name": "Call pogs-rule-engine",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        4336,
+        -1824
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "p579PotbV56XZXzp",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/p579PotbV56XZXzp",
+          "cachedResultName": "pogs-rule-engine"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "9762febe-bdb2-4902-b4db-bd8a0bc08e63",
+      "name": "Call clinical-ai-helper",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        3664,
+        -2000
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "RdfJbQll0ukwP31f",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/RdfJbQll0ukwP31f",
+          "cachedResultName": "clinical-ai-helper"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "clinicalText": "={{ $json.aiRequest.clinicalText }}",
+            "knownFacts": "={{ $json.aiRequest.knownFacts }}",
+            "unresolvedTerms": "={{ $json.aiRequest.unresolvedTerms }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "clinicalText",
+              "displayName": "clinicalText",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "knownFacts",
+              "displayName": "knownFacts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "unresolvedTerms",
+              "displayName": "unresolvedTerms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "ea00dace-d94f-474f-9724-9b3678c15c19",
+      "name": "AI Needed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3216,
+        -1824
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0e694be2-46a3-43fd-8c6a-495c37289f9e",
+              "leftValue": "={{  $json.aiRouting    ?.needsAI === true}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "25b6a860-c7bc-4fd8-b715-098cd88b4cd0",
+      "name": "Call knowledge-regression",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        4560,
+        -1824
+      ],
       "parameters": {
         "workflowId": {
           "__rl": true,
@@ -154,80 +404,42 @@
           "attemptToConvertTypes": false,
           "convertFieldsToString": true
         },
-        "options": {}
-      },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "9d4d0943-140e-49db-b84d-6dc10285a287",
+      "name": "Call pogs-processing",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.3,
       "position": [
-        3584,
-        -1472
+        5008,
+        -1824
       ],
-      "id": "f0b601d8-684a-4b4b-8be6-aa046b8a9cea",
-      "name": "Call 'knowledge-regression'"
-    },
-    {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "55675f59-3c0e-4390-90a4-daabc1aaf297",
-              "leftValue": "={{   $json.validation.readyForPOGS === true   &&   $json.runContext?.mode !== \"REGRESSION\" }}",
-              "rightValue": "",
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
+        "workflowId": {
+          "__rl": true,
+          "value": "muoM56eF7sszgYmW",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/muoM56eF7sszgYmW",
+          "cachedResultName": "pogs-processing"
         },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        3584,
-        -1664
-      ],
-      "id": "7085bcc7-dde8-43f0-b95f-33f7967a916c",
-      "name": "Candidate Ready?"
-    },
-    {
-      "parameters": {
-        "executeOnce": false,
-        "command": "=case_id='{{$json.runContext.rawCaseId}}'\n\nsrc=\"/data/cases/raw_cases/new/$case_id.json\"\ndst=\"/data/cases/raw_cases/gaps/$case_id.json\"\n\nif [ ! -f \"$src\" ]; then\n  echo \"SOURCE_NOT_FOUND\"\n  exit 1\nfi\n\nif [ -e \"$dst\" ]; then\n  echo \"DESTINATION_ALREADY_EXISTS\"\n  exit 1\nfi\n\nmv \"$src\" \"$dst\"\n\nif [ -f \"$dst\" ] && [ ! -f \"$src\" ]; then\n  echo \"MOVED_TO_GAPS\"\n  exit 0\nfi\n\necho \"MOVE_VERIFICATION_FAILED\"\nexit 1"
-      },
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [
-        3808,
-        -1664
-      ],
-      "id": "5feacfc6-f135-4cfe-b149-fea433433334",
-      "name": "Move New Case to Gaps"
-    },
-    {
-      "parameters": {
-        "inputSource": "passthrough"
-      },
-      "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        1792,
-        -1472
-      ],
-      "id": "7ddec283-2e53-4bcf-bfb4-65602e3c4829",
-      "name": "When Executed by Another Workflow"
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
     }
   ],
-  "pinData": {},
   "connections": {
     "When clicking ‘Execute workflow’": {
       "main": [
@@ -244,67 +456,7 @@
       "main": [
         [
           {
-            "node": "Classify Case Type",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build POGS Candidate": {
-      "main": [
-        [
-          {
-            "node": "Validate POGS Candidate",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Validate POGS Candidate": {
-      "main": [
-        [
-          {
-            "node": "Call 'knowledge-regression'",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Candidate Ready?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Classify Case Type": {
-      "main": [
-        [
-          {
-            "node": "Extract Diagnosis Terms",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extract Diagnosis Terms": {
-      "main": [
-        [
-          {
-            "node": "Map Diagnosis to POGS References",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Map Diagnosis to POGS References": {
-      "main": [
-        [
-          {
-            "node": "Build POGS Candidate",
+            "node": "Deterministic Case Classification",
             "type": "main",
             "index": 0
           }
@@ -344,17 +496,11 @@
         ]
       ]
     },
-    "Call 'knowledge-regression'": {
-      "main": [
-        []
-      ]
-    },
     "Candidate Ready?": {
       "main": [
-        [],
         [
           {
-            "node": "Move New Case to Gaps",
+            "node": "Call pogs-processing",
             "type": "main",
             "index": 0
           }
@@ -365,7 +511,162 @@
       "main": [
         [
           {
-            "node": "Normalize Data",
+            "node": "Validate Processing Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Processing Request": {
+      "main": [
+        [
+          {
+            "node": "Read Requested Raw Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Requested Raw Case": {
+      "main": [
+        [
+          {
+            "node": "Load Raw Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deterministic Case Classification": {
+      "main": [
+        [
+          {
+            "node": "Deterministic Delivery Evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deterministic Delivery Evidence": {
+      "main": [
+        [
+          {
+            "node": "Determine AI Need",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Determine AI Need": {
+      "main": [
+        [
+          {
+            "node": "AI Needed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Input": {
+      "main": [
+        [
+          {
+            "node": "Call clinical-ai-helper",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge with Original",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Mark AI Not Used": {
+      "main": [
+        [
+          {
+            "node": "Merge Clinical Facts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge with Original": {
+      "main": [
+        [
+          {
+            "node": "Merge Clinical Facts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Clinical Facts": {
+      "main": [
+        [
+          {
+            "node": "Call pogs-rule-engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call clinical-ai-helper": {
+      "main": [
+        [
+          {
+            "node": "Merge with Original",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Needed?": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark AI Not Used",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call pogs-rule-engine": {
+      "main": [
+        [
+          {
+            "node": "Call knowledge-regression",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call knowledge-regression": {
+      "main": [
+        [
+          {
+            "node": "Candidate Ready?",
             "type": "main",
             "index": 0
           }
@@ -373,18 +674,11 @@
       ]
     }
   },
-  "active": false,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "845e8b5a-3906-4d8e-b4bc-303d775d74b0",
-  "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "6abe633e642ac10907998aea3acf7f455b53446183e61573d9b0db9c93a612e2"
-  },
-  "nodeGroups": [],
-  "id": "mvtFIT6QbBavL3yf",
-  "tags": []
+  "tags": [],
+  "isArchived": false
 }

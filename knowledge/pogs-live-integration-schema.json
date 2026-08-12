@@ -1,0 +1,574 @@
+{
+  "schemaVersion": "1.0.0",
+  "artifactType": "pogs-live-integration-schema",
+  "status": "ACTIVE_DRAFT",
+  "generatedFromAnalysisDate": "2026-08-11",
+  "purpose": {
+    "summary": "Machine-readable reverse-engineered schema and integration contract for the live local POGS application.",
+    "useFor": [
+      "n8n pogs-processing workflow design",
+      "candidate field coverage audits",
+      "deterministic close-readiness validation",
+      "draft create/update API integration"
+    ],
+    "notFor": [
+      "POGS cloud submission",
+      "guessing unresolved clinical meaning",
+      "replacing clinical review"
+    ]
+  },
+  "liveSources": {
+    "backendRoutes": "C:\\pogs\\node-pogs\\app\\routes\\pogs.routes.js",
+    "patientModel": "C:\\pogs\\node-pogs\\app\\models\\pogs-patient.model.js",
+    "caseModel": "C:\\pogs\\node-pogs\\app\\models\\pogs-case.model.js",
+    "caseController": "C:\\pogs\\node-pogs\\app\\controllers\\pogs-case.controller.js",
+    "caseValidations": "C:\\pogs\\node-pogs\\app\\controllers\\pogs-case-validations.js",
+    "patientController": "C:\\pogs\\node-pogs\\app\\controllers\\pogs-patient.controller.js",
+    "submissionController": "C:\\pogs\\node-pogs\\app\\controllers\\pogs-submissions.controller.js",
+    "references": "C:\\pogs\\node-pogs\\app\\references\\index.js",
+    "liveFrontendSourceMap": "C:\\pogs\\node-pogs\\public\\js\\app.66ef3b47.js.map"
+  },
+  "integrationMode": {
+    "preferredTransport": "local API",
+    "browserAutomationRequired": false,
+    "auth": {
+      "loginEndpoint": "POST /api/accounts/login",
+      "tokenUsage": "Authorization: Bearer <token>",
+      "notes": [
+        "JWT expires after login and is required for case operations.",
+        "Use local credentials only. Never store tokens in repo artifacts."
+      ]
+    }
+  },
+  "apiWorkflow": {
+    "healthcheck": "GET /ping",
+    "searchCase": "GET /api/patientcases?search=<caseNum>",
+    "createPatientPlaceholder": "POST /api/patientcases or POST /api/patients",
+    "createCase": "POST /api/patients/:patientid/cases",
+    "readCase": "GET /api/patients/:patientid/cases/:caseid",
+    "updateCase": "PUT /api/patients/:patientid/cases/:caseid",
+    "closeCase": "PUT /api/patients/:patientid/cases/:caseid/close"
+  },
+  "patientSchema": {
+    "required": [
+      "firstName",
+      "birthDate"
+    ],
+    "optional": [
+      "middleName",
+      "lastName",
+      "avatar"
+    ],
+    "implementationNotes": [
+      "Live app commonly uses caseNum as placeholder patient name values.",
+      "Patient creation is not the main blocker for automation."
+    ]
+  },
+  "caseSchema": {
+    "fieldCountFromLiveFormRules": 102,
+    "groups": {
+      "admissionAndDemographics": [
+        "admissionDate",
+        "age",
+        "weight",
+        "height",
+        "bmi",
+        "room",
+        "caseFormType",
+        "isPostpartum"
+      ],
+      "obstetricScore": [
+        "obscoreG",
+        "obscoreP",
+        "obscoreFT",
+        "obscorePr",
+        "obscoreAb",
+        "obscoreLB"
+      ],
+      "pregnancy": [
+        "admissionAOGType",
+        "admissionAOG",
+        "admissionWeeks",
+        "admissionDays",
+        "pregnancyType",
+        "isHeterotopic",
+        "abortionType",
+        "ectopicType",
+        "molarType",
+        "isDelivered",
+        "institutionalDelivery",
+        "infantsNumber"
+      ],
+      "delivery": [
+        "deliveryDate",
+        "deliveryAOGType",
+        "deliveryAOG",
+        "deliveryWeeks",
+        "deliveryDays",
+        "deliveryManner",
+        "primaryRepeat",
+        "incision",
+        "CSBilateralSalpingectomy",
+        "CSBTL",
+        "deliveryIndication",
+        "deliveryManner2",
+        "primaryRepeat2",
+        "incision2",
+        "CSBilateralSalpingectomy2",
+        "CSBTL2",
+        "deliveryIndication2",
+        "isTOLAC",
+        "obProcedure",
+        "concomitantProcedure"
+      ],
+      "pregnancyComplicationsAndHistory": [
+        "complicatedPregnancy",
+        "isInduced",
+        "inducedIndication",
+        "inducedMethod",
+        "inducedComplication",
+        "returnToOR",
+        "morbidities",
+        "medicalHistory",
+        "obstetricHistory",
+        "pcosHistory",
+        "pcosSymptoms"
+      ],
+      "neonatal": [
+        "neonatal",
+        "neonatal.status",
+        "neonatal.anomalies",
+        "neonatal.anomalyOthers",
+        "neonatal.pediatricAge",
+        "neonatal.pediatricWeight",
+        "neonatal.pediatricHeight",
+        "neonatal.apgar1m",
+        "neonatal.apgar5m",
+        "neonatal.injury"
+      ],
+      "gyneAndGtd": [
+        "gynecologicalDiagnosis",
+        "gyneOrgan",
+        "organCondition",
+        "gyneDiagnosis",
+        "gtdDiagnosis",
+        "gtdComplication",
+        "gtdComplicationOthers",
+        "medicalSurgical",
+        "surgicalIntervention",
+        "surgicalInterventionOthers",
+        "gynemorbidities",
+        "hasFailedMIS"
+      ],
+      "maternalOutcome": [
+        "dischargeDate",
+        "motherCondition",
+        "antecedent",
+        "antecedentType",
+        "immediateCause",
+        "immediateCauseOthers",
+        "complicationOnset",
+        "complicationOnsetSpecific",
+        "deathTiming",
+        "deathTimingComplication",
+        "deathReviewed"
+      ],
+      "migs": [
+        "MIGSSurgeon",
+        "MIGSSurgeonPSGE",
+        "MIGSSurgeonPSRM",
+        "MIGSAssist",
+        "MIGSAssistPSGE",
+        "MIGSAssistPSRM"
+      ]
+    }
+  },
+  "closeValidation": {
+    "coreRequired": [
+      "admissionDate",
+      "age",
+      "weight",
+      "height",
+      "bmi",
+      "caseFormType",
+      "motherCondition"
+    ],
+    "pregnancyConditional": [
+      {
+        "field": "isPostpartum",
+        "requiredWhen": {
+          "isPregnancy": true
+        }
+      },
+      {
+        "field": "admissionAOG",
+        "requiredWhen": {
+          "isPregnancy": true
+        }
+      },
+      {
+        "field": "admissionWeeks",
+        "requiredWhen": {
+          "isPregnancy": true,
+          "admissionAOGType": 1
+        }
+      },
+      {
+        "field": "admissionDays",
+        "requiredWhen": {
+          "isPregnancy": true,
+          "admissionAOGType": 1
+        }
+      },
+      {
+        "field": "pregnancyType",
+        "requiredWhen": {
+          "isPregnancy": true
+        }
+      },
+      {
+        "field": "isHeterotopic",
+        "requiredWhen": {
+          "isPregnancy": true,
+          "pregnancyType": 2
+        }
+      },
+      {
+        "field": "abortionType",
+        "requiredWhen": {
+          "isPregnancy": true,
+          "pregnancyType": 3
+        }
+      },
+      {
+        "field": "ectopicType",
+        "requiredWhen": {
+          "isPregnancy": true,
+          "pregnancyType": 4
+        }
+      },
+      {
+        "field": "molarType",
+        "requiredWhen": {
+          "isPregnancy": true,
+          "pregnancyType": 5
+        }
+      }
+    ],
+    "deliveryConditional": [
+      {
+        "field": "isDelivered",
+        "requiredWhen": {
+          "isPregnancy": true,
+          "isPostpartum": false,
+          "pregnancyTypeIn": [
+            1,
+            2
+          ]
+        }
+      },
+      {
+        "field": "institutionalDelivery",
+        "requiredWhen": {
+          "isDelivered": true
+        }
+      },
+      {
+        "field": "infantsNumber",
+        "requiredWhen": {
+          "isDelivered": true
+        }
+      },
+      {
+        "field": "deliveryAOG",
+        "requiredWhen": {
+          "isDelivered": true
+        }
+      },
+      {
+        "field": "deliveryDate",
+        "requiredWhen": {
+          "isDelivered": true
+        }
+      },
+      {
+        "field": "deliveryWeeks",
+        "requiredWhen": {
+          "isDelivered": true,
+          "deliveryAOGType": 1
+        }
+      },
+      {
+        "field": "deliveryDays",
+        "requiredWhen": {
+          "isDelivered": true,
+          "deliveryAOGType": 1
+        }
+      },
+      {
+        "field": "deliveryManner",
+        "requiredWhen": {
+          "isDelivered": true
+        }
+      },
+      {
+        "field": "primaryRepeat",
+        "requiredWhen": {
+          "isDelivered": true,
+          "deliveryManner": 1
+        }
+      },
+      {
+        "field": "incision",
+        "requiredWhen": {
+          "isDelivered": true,
+          "deliveryManner": 1
+        }
+      },
+      {
+        "field": "CSBilateralSalpingectomy",
+        "requiredWhen": {
+          "isDelivered": true,
+          "deliveryManner": 1
+        }
+      },
+      {
+        "field": "CSBTL",
+        "requiredWhen": {
+          "isDelivered": true,
+          "deliveryManner": 1
+        }
+      },
+      {
+        "field": "deliveryIndication",
+        "requiredWhen": {
+          "isDelivered": true,
+          "deliveryMannerIn": [
+            1,
+            5,
+            6
+          ]
+        }
+      },
+      {
+        "field": "neonatal",
+        "requiredWhen": {
+          "isDelivered": true,
+          "isPostpartum": false
+        }
+      },
+      {
+        "field": "isTOLAC",
+        "requiredWhen": {
+          "isDelivered": true,
+          "isPregnancy": true
+        }
+      }
+    ],
+    "complicationConditional": [
+      {
+        "field": "complicatedPregnancy",
+        "requiredWhen": {
+          "isPregnancy": true
+        }
+      },
+      {
+        "field": "isInduced",
+        "requiredWhen": {
+          "isPregnancy": true,
+          "isDelivered": true
+        }
+      },
+      {
+        "field": "inducedIndication",
+        "requiredWhen": {
+          "isInduced": true
+        }
+      },
+      {
+        "field": "inducedMethod",
+        "requiredWhen": {
+          "isInduced": true
+        }
+      },
+      {
+        "field": "inducedComplication",
+        "requiredWhen": {
+          "isInduced": true
+        }
+      },
+      {
+        "field": "returnToOR",
+        "requiredWhen": {
+          "isPregnancy": true,
+          "complicatedPregnancy": true
+        }
+      },
+      {
+        "field": "pcosSymptoms",
+        "requiredWhen": {
+          "pcosHistory": true
+        }
+      }
+    ],
+    "gyneConditional": [
+      {
+        "field": "gynecologicalDiagnosis",
+        "requiredWhen": {
+          "isGyne": true
+        }
+      }
+    ],
+    "migsConditional": [
+      {
+        "field": "MIGSSurgeonPSGE",
+        "requiredWhen": {
+          "MIGSSurgeon": 1,
+          "MIGSSurgeonPSRM": false
+        }
+      },
+      {
+        "field": "MIGSSurgeonPSRM",
+        "requiredWhen": {
+          "MIGSSurgeon": 1,
+          "MIGSSurgeonPSGE": false
+        }
+      },
+      {
+        "field": "MIGSAssistPSGE",
+        "requiredWhen": {
+          "MIGSAssist": 1,
+          "MIGSAssistPSRM": false
+        }
+      },
+      {
+        "field": "MIGSAssistPSRM",
+        "requiredWhen": {
+          "MIGSAssist": 1,
+          "MIGSAssistPSGE": false
+        }
+      }
+    ],
+    "dischargeConditional": [
+      {
+        "field": "dischargeDate",
+        "requiredWhen": {
+          "alwaysExpectedBeforeClose": true
+        }
+      },
+      {
+        "field": "antecedentType",
+        "requiredWhen": {
+          "motherCondition": 3
+        }
+      },
+      {
+        "field": "deathTiming",
+        "requiredWhen": {
+          "motherCondition": 3
+        }
+      },
+      {
+        "field": "deathReviewed",
+        "requiredWhen": {
+          "motherCondition": 3
+        }
+      }
+    ],
+    "neonatalRules": [
+      "Only the first infantsNumber neonatal entries are validated for close.",
+      "Each validated neonatal entry must contain non-empty values for all required fields except anomalyOthers and causeofdeath unless their specific triggers apply.",
+      "causeofdeath becomes required for infant status values in the death or stillbirth states.",
+      "anomalyOthers becomes required when anomalies is true."
+    ]
+  },
+  "currentProjectCoverage": {
+    "activeWorkflow": "workflows/case-new-processing.json",
+    "candidateFieldCount": 20,
+    "matchedLiveFieldCount": 12,
+    "matchedLiveFields": [
+      "admissionDate",
+      "room",
+      "weight",
+      "height",
+      "isPostpartum",
+      "obscoreG",
+      "obscoreP",
+      "obscoreFT",
+      "obscorePr",
+      "obscoreAb",
+      "obscoreLB",
+      "gynecologicalDiagnosis"
+    ],
+    "currentlyProducedNonLiveControlFields": [
+      "caseNum",
+      "birthDate",
+      "isPregnancy",
+      "isGyne",
+      "unresolvedDiagnoses",
+      "ignoredDiagnosisTerms",
+      "classificationEvidence",
+      "source"
+    ],
+    "majorMissingLiveFields": [
+      "age",
+      "bmi",
+      "caseFormType",
+      "admissionAOGType",
+      "admissionAOG",
+      "pregnancyType",
+      "isDelivered",
+      "institutionalDelivery",
+      "infantsNumber",
+      "deliveryDate",
+      "deliveryManner",
+      "deliveryIndication",
+      "isTOLAC",
+      "complicatedPregnancy",
+      "isInduced",
+      "morbidities",
+      "medicalHistory",
+      "obstetricHistory",
+      "concomitantProcedure",
+      "obProcedure",
+      "neonatal",
+      "pcosHistory",
+      "pcosSymptoms",
+      "gyneOrgan",
+      "organCondition",
+      "gtdDiagnosis",
+      "dischargeDate",
+      "motherCondition",
+      "deathTiming",
+      "deathReviewed",
+      "MIGSSurgeon",
+      "MIGSAssist"
+    ]
+  },
+  "feasibility": {
+    "draftCreateOrUpdate": "FEASIBLE_NOW",
+    "fullAutomaticClose": "NOT_SAFE_YET",
+    "mainBlockers": [
+      "schema coverage gap",
+      "conditional pregnancy and delivery logic",
+      "neonatal array construction",
+      "exact reference-coded mapping completeness",
+      "close-rule parity with live POGS backend"
+    ]
+  },
+  "recommendedBuildSequence": [
+    "Create a dedicated pogs-processing workflow separate from case-new-processing.",
+    "Implement login and duplicate search against the local API.",
+    "Support create draft patient and draft case paths only at first.",
+    "Derive missing deterministic basics such as age and bmi.",
+    "Move conditional applicability and required logic into a schema-driven rule engine using this artifact and knowledge/pogs-form-rules.json.",
+    "Populate pregnancy, delivery, neonatal, maternal outcome, and gyne/GTD branches incrementally.",
+    "Only enable close when a local validator matches live backend behavior."
+  ],
+  "notes": [
+    "Use the live backend and live frontend source map as the authority when any artifact drifts.",
+    "Do not treat older root bundle files as the current frontend truth.",
+    "Do not let regression mode call create, update, or close endpoints.",
+    "Draft automation delivers value safely before full close automation exists."
+  ]
+}

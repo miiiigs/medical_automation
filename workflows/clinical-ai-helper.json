@@ -1,0 +1,176 @@
+{
+  "id": "RdfJbQll0ukwP31f",
+  "name": "clinical-ai-helper",
+  "active": true,
+  "nodes": [
+    {
+      "id": "e1efdf6c-17e5-4065-995a-93cc4aff33cc",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -64
+      ],
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"clinicalText\": \"...\",\n  \"knownFacts\": {},\n  \"unresolvedTerms\": []\n}"
+      }
+    },
+    {
+      "id": "c095d40b-9862-4894-b2b0-d49b49b74c0e",
+      "name": "Validate AI Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -64
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d = $json;\n\nif (\n  typeof d.clinicalText !== \"string\" ||\n  d.clinicalText.trim().length === 0\n) {\n  throw new Error(\n    \"clinical-ai-helper: clinicalText is missing\"\n  );\n}\n\nconst knownFacts =\n  d.knownFacts &&\n  typeof d.knownFacts === \"object\"\n    ? d.knownFacts\n    : {};\n\nconst unresolvedTerms =\n  Array.isArray(d.unresolvedTerms)\n    ? d.unresolvedTerms\n    : [];\n\nreturn {\n  json: {\n    clinicalText:\n      d.clinicalText.trim(),\n\n    knownFacts,\n\n    unresolvedTerms\n  }\n};"
+      }
+    },
+    {
+      "id": "59750033-187e-4eb1-97d2-df6a9162719e",
+      "name": "Build OpenAI Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -64
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d = $json;\n\nconst systemInstruction = `\nYou are a clinical information extraction assistant.\n\nExtract only facts explicitly supported by the clinical text.\n\nRules:\n1. Do not invent clinical facts.\n2. Do not infer current delivery from gravidity or parity.\n3. PARA > 0 does not mean the current pregnancy has delivered.\n4. Distinguish current pregnancy from prior obstetric history.\n5. If evidence is insufficient, return null.\n6. Do not create, guess, or output POGS IDs.\n7. Do not create categoryId, conditionId, procedureId, stageId, or option IDs.\n8. Preserve diagnoses and procedures as clinical concepts/text.\n9. Negated findings must be marked as negated.\n10. Output only values supported by the provided material.\n`.trim();\n\nconst userPayload = {\n  clinicalText:\n    d.clinicalText,\n\n  knownDeterministicFacts:\n    d.knownFacts,\n\n  unresolvedTerms:\n    d.unresolvedTerms\n};\n\nreturn {\n  json: {\n    clinicalText:\n      d.clinicalText,\n\n    knownFacts:\n      d.knownFacts,\n\n    unresolvedTerms:\n      d.unresolvedTerms,\n\n    openaiRequest: {\n      model:\n        \"gpt-5-nano\",\n\n      store:\n        false,\n\n      input: [\n        {\n          role:\n            \"system\",\n\n          content: [\n            {\n              type:\n                \"input_text\",\n\n              text:\n                systemInstruction\n            }\n          ]\n        },\n        {\n          role:\n            \"user\",\n\n          content: [\n            {\n              type:\n                \"input_text\",\n\n              text:\n                JSON.stringify(\n                  userPayload,\n                  null,\n                  2\n                )\n            }\n          ]\n        }\n      ],\n\n      text: {\n        format: {\n          type:\n            \"json_schema\",\n\n          name:\n            \"clinical_extraction\",\n\n          strict:\n            true,\n\n          schema: {\n            type:\n              \"object\",\n\n            additionalProperties:\n              false,\n\n            properties: {\n              isPregnancy: {\n                type: [\n                  \"boolean\",\n                  \"null\"\n                ]\n              },\n\n              isGyne: {\n                type: [\n                  \"boolean\",\n                  \"null\"\n                ]\n              },\n\n              isPostpartum: {\n                type: [\n                  \"boolean\",\n                  \"null\"\n                ]\n              },\n\n              currentPregnancyDelivered: {\n                type: [\n                  \"boolean\",\n                  \"null\"\n                ]\n              },\n\n              pregnancyTypeText: {\n                type: [\n                  \"string\",\n                  \"null\"\n                ]\n              },\n\n              deliveryMannerText: {\n                type: [\n                  \"string\",\n                  \"null\"\n                ]\n              },\n\n              deliveryEvidence: {\n                type:\n                  \"array\",\n\n                items: {\n                  type:\n                    \"string\"\n                }\n              },\n\n              diagnosisTerms: {\n                type:\n                  \"array\",\n\n                items: {\n                  type:\n                    \"object\",\n\n                  additionalProperties:\n                    false,\n\n                  properties: {\n                    term: {\n                      type:\n                        \"string\"\n                    },\n\n                    negated: {\n                      type:\n                        \"boolean\"\n                    },\n\n                    evidence: {\n                      type:\n                        \"string\"\n                    }\n                  },\n\n                  required: [\n                    \"term\",\n                    \"negated\",\n                    \"evidence\"\n                  ]\n                }\n              },\n\n              comorbidityTerms: {\n                type:\n                  \"array\",\n\n                items: {\n                  type:\n                    \"object\",\n\n                  additionalProperties:\n                    false,\n\n                  properties: {\n                    term: {\n                      type:\n                        \"string\"\n                    },\n\n                    negated: {\n                      type:\n                        \"boolean\"\n                    },\n\n                    evidence: {\n                      type:\n                        \"string\"\n                    }\n                  },\n\n                  required: [\n                    \"term\",\n                    \"negated\",\n                    \"evidence\"\n                  ]\n                }\n              },\n\n              procedureTerms: {\n                type:\n                  \"array\",\n\n                items: {\n                  type:\n                    \"object\",\n\n                  additionalProperties:\n                    false,\n\n                  properties: {\n                    term: {\n                      type:\n                        \"string\"\n                    },\n\n                    evidence: {\n                      type:\n                        \"string\"\n                    }\n                  },\n\n                  required: [\n                    \"term\",\n                    \"evidence\"\n                  ]\n                }\n              },\n\n              uncertainFacts: {\n                type:\n                  \"array\",\n\n                items: {\n                  type:\n                    \"string\"\n                }\n              }\n            },\n\n            required: [\n              \"isPregnancy\",\n              \"isGyne\",\n              \"isPostpartum\",\n              \"currentPregnancyDelivered\",\n              \"pregnancyTypeText\",\n              \"deliveryMannerText\",\n              \"deliveryEvidence\",\n              \"diagnosisTerms\",\n              \"comorbidityTerms\",\n              \"procedureTerms\",\n              \"uncertainFacts\"\n            ]\n          }\n        }\n      }\n    }\n  }\n};"
+      }
+    },
+    {
+      "id": "44097168-f691-430f-b26e-3486c3637def",
+      "name": "OpenAI Clinical Extraction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        672,
+        -64
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/responses",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.openaiRequest }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "dLkl5lhGsN17ksIO",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "36217f66-e9ab-490d-be96-fd807f3cb9d6",
+      "name": "Validate OpenAI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -64
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const response = $json;\n\nif (!response.id) {\n  throw new Error(\n    \"OpenAI response has no response ID\"\n  );\n}\n\nif (\n  response.status !== undefined &&\n  response.status !== \"completed\"\n) {\n  throw new Error(\n    `OpenAI response did not complete. Status: ${\n      response.status\n    }`\n  );\n}\n\nif (\n  !Array.isArray(\n    response.output\n  )\n) {\n  throw new Error(\n    \"OpenAI response has no output array\"\n  );\n}\n\nreturn {\n  json:\n    response\n};"
+      }
+    },
+    {
+      "id": "24500048-2fb0-44e8-8c89-ef427f1b23eb",
+      "name": "Extract AI Facts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -64
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const response = $json;\n\nconst contentItems =\n  (response.output ?? [])\n    .flatMap(\n      outputItem =>\n        outputItem.content ?? []\n    );\n\nconst outputText =\n  contentItems.find(\n    item =>\n      item.type === \"output_text\"\n  );\n\nif (!outputText?.text) {\n  throw new Error(\n    \"OpenAI response contains no output_text\"\n  );\n}\n\nlet aiFacts;\n\ntry {\n  aiFacts =\n    JSON.parse(\n      outputText.text\n    );\n} catch (error) {\n  throw new Error(\n    `Failed to parse AI output: ${\n      error.message\n    }`\n  );\n}\n\nreturn {\n  json: {\n    aiFacts,\n\n    aiMeta: {\n      used:\n        true,\n\n      model:\n        response.model ??\n        null,\n\n      responseId:\n        response.id ??\n        null\n    }\n  }\n};"
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Validate AI Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate AI Input": {
+      "main": [
+        [
+          {
+            "node": "Build OpenAI Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build OpenAI Request": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Clinical Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Clinical Extraction": {
+      "main": [
+        [
+          {
+            "node": "Validate OpenAI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate OpenAI Response": {
+      "main": [
+        [
+          {
+            "node": "Extract AI Facts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": [],
+  "isArchived": false
+}

@@ -1,0 +1,378 @@
+{
+  "id": "p579PotbV56XZXzp",
+  "name": "pogs-rule-engine",
+  "active": false,
+  "nodes": [
+    {
+      "id": "a0f0a649-ccc7-44a1-bd82-4d3ea65dbba7",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -16
+      ],
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n \"clinicalFacts\":{},\n \"diagnoses\":[],\n \"classification\":{}\n}"
+      }
+    },
+    {
+      "id": "da10eeb1-0cea-4c93-93ca-5baf3e8cd879",
+      "name": "Load Semantic Layer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -16
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const caseData = $json;\n\nif (!caseData.runContext?.rawCaseId) {\n  throw new Error(\n    \"pogs-rule-engine: incoming case has no rawCaseId\"\n  );\n}\n\nreturn {\n  json: {\n    caseData: caseData,\n\n    configPaths: {\n      semanticLayer:\n        \"/data/knowledge/clinical-automation-semantic-layer-v1.3.0.json\",\n\n      pogsReferences:\n        \"/data/knowledge/pogs-reference-values.json\",\n\n      pogsFormRules:\n        \"/data/knowledge/pogs-form-rules.json\"\n    }\n  }\n};"
+      }
+    },
+    {
+      "id": "d9f7ba3f-d3c3-4597-be73-8615159b2395",
+      "name": "Read Semantic Layer File",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        -16
+      ],
+      "parameters": {
+        "fileSelector": "={{ $json.configPaths.semanticLayer }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "673b1b24-b399-4dc2-bd00-14a2960fb57a",
+      "name": "Parse Semantic Layer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        -16
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const binaryKeys =\n  Object.keys($binary ?? {});\n\nif (binaryKeys.length === 0) {\n  throw new Error(\n    \"Semantic layer file returned no binary data\"\n  );\n}\n\nconst binaryProperty =\n  binaryKeys[0];\n\nconst buffer =\n  await this.helpers.getBinaryDataBuffer(\n    $itemIndex,\n    binaryProperty\n  );\n\nlet semanticLayer;\n\ntry {\n  semanticLayer =\n    JSON.parse(\n      buffer.toString(\"utf8\")\n    );\n} catch (error) {\n  throw new Error(\n    `Invalid semantic layer JSON: ${error.message}`\n  );\n}\n\n/*\nThe Read File node may not preserve every\nprevious JSON field in every n8n configuration.\n\nRetrieve the original preserved data from\nthe named earlier node.\n*/\nconst prepared =\n  $(\"Load Semantic Layer\")\n    .item\n    .json;\n\nreturn {\n  json: {\n    caseData:\n      prepared.caseData,\n\n    configPaths:\n      prepared.configPaths,\n\n    semanticLayer\n  }\n};"
+      }
+    },
+    {
+      "id": "47c8652b-8757-4aed-85ac-81842fd55259",
+      "name": "Load POGS Reference Values",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -16
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  json: {\n    ...$json,\n\n    readPath:\n      $json.configPaths\n        .pogsReferences\n  }\n};"
+      }
+    },
+    {
+      "id": "ddaee6f4-8db3-4d9c-8e62-e7bfe5794eba",
+      "name": "Read POGS Reference Values",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        -16
+      ],
+      "parameters": {
+        "fileSelector": "={{ $json.readPath }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "71cfcbab-4c16-4e32-974f-55b0bbd7b00a",
+      "name": "Parse POGS Reference Values",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        -16
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const binaryKeys =\n  Object.keys($binary ?? {});\n\nif (binaryKeys.length === 0) {\n  throw new Error(\n    \"POGS reference file returned no binary data\"\n  );\n}\n\nconst buffer =\n  await this.helpers.getBinaryDataBuffer(\n    $itemIndex,\n    binaryKeys[0]\n  );\n\nlet pogsReferences;\n\ntry {\n  pogsReferences =\n    JSON.parse(\n      buffer.toString(\"utf8\")\n    );\n} catch (error) {\n  throw new Error(\n    `Invalid POGS reference JSON: ${error.message}`\n  );\n}\n\nconst previous =\n  $(\"Load POGS Reference Values\")\n    .item\n    .json;\n\nreturn {\n  json: {\n    caseData:\n      previous.caseData,\n\n    configPaths:\n      previous.configPaths,\n\n    semanticLayer:\n      previous.semanticLayer,\n\n    pogsReferences\n  }\n};"
+      }
+    },
+    {
+      "id": "e4b6d7a9-5408-4404-aeb8-f78574ce17df",
+      "name": "Load POGS Form Rules",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        -16
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  json: {\n    ...$json,\n\n    readPath:\n      $json.configPaths\n        .pogsFormRules\n  }\n};"
+      }
+    },
+    {
+      "id": "217478ea-eeb0-4caf-90e0-60977280beb5",
+      "name": "Read POGS Form Rules File",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1792,
+        -16
+      ],
+      "parameters": {
+        "fileSelector": "={{ $json.readPath }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "7ba2f21f-29e1-4ad6-85b9-cee3347da709",
+      "name": "Parse POGS Form Ruels",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2016,
+        -16
+      ],
+      "parameters": {
+        "jsCode": "const binaryKeys =\n  Object.keys($binary ?? {});\n\nif (binaryKeys.length === 0) {\n  throw new Error(\n    \"POGS form-rules file returned no binary data\"\n  );\n}\n\nconst buffer =\n  await this.helpers.getBinaryDataBuffer(\n    $itemIndex,\n    binaryKeys[0]\n  );\n\nlet pogsFormRules;\n\ntry {\n  pogsFormRules =\n    JSON.parse(\n      buffer.toString(\"utf8\")\n    );\n} catch (error) {\n  throw new Error(\n    `Invalid POGS form-rules JSON: ${error.message}`\n  );\n}\n\nconst previous =\n  $(\"Load POGS Form Rules\")\n    .item\n    .json;\n\nreturn {\n  json: {\n    caseData:\n      previous.caseData,\n\n    semanticLayer:\n      previous.semanticLayer,\n\n    pogsReferences:\n      previous.pogsReferences,\n\n    pogsFormRules: pogsFormRules,\n\n    engineMeta: {\n      formRulesMode:\n        \"REPORT_ONLY\"\n    }\n  }\n};"
+      }
+    },
+    {
+      "id": "ab3aa567-8054-4597-9988-1576260d6e06",
+      "name": "Apply Semantic Mapping",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        -16
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const caseData = $json.caseData;\nconst semanticLayer = $json.semanticLayer;\nconst pogsReferences = $json.pogsReferences;\nconst pogsFormRules = $json.pogsFormRules;\nconst engineMeta = $json.engineMeta;\n\n\nfunction textOf(item) {\n\n  if (\n    typeof item === \"string\"\n  ) {\n    return item.trim();\n  }\n\n  return String(\n    item?.term ??\n    item?.sourceLabel ??\n    \"\"\n  ).trim();\n}\n\n\nfunction isNegated(item) {\n\n  if (\n    typeof item !== \"object\" ||\n    item === null\n  ) {\n    return false;\n  }\n\n  return (\n    item.negated === true\n  );\n}\n\n\nconst deterministicDiagnoses =\n  caseData.diagnosisTerms ??\n  caseData.extractedDiagnosisTerms ??\n  [];\n\n\nconst aiDiagnoses =\n  caseData.clinicalConcepts\n    ?.aiDiagnosisTerms ??\n  [];\n\n\nconst aiComorbidities =\n  caseData.clinicalConcepts\n    ?.aiComorbidityTerms ??\n  [];\n\n\nconst aiProcedures =\n  caseData.clinicalConcepts\n    ?.aiProcedureTerms ??\n  [];\n\n\nconst diagnosisConcepts = [];\n\nfor (\n  const item of [\n    ...deterministicDiagnoses,\n    ...aiDiagnoses\n  ]\n) {\n\n  const text =\n    textOf(item);\n\n  if (\n    !text ||\n    isNegated(item)\n  ) {\n    continue;\n  }\n\n  diagnosisConcepts.push({\n    sourceText:\n      text,\n\n    normalizedText:\n      text\n        .toLowerCase()\n        .replace(/\\s+/g, \" \")\n        .trim(),\n\n    source:\n      aiDiagnoses.includes(item)\n        ? \"AI\"\n        : \"DETERMINISTIC\"\n  });\n}\n\n\nconst comorbidityConcepts =\n  aiComorbidities\n    .filter(\n      item =>\n        !isNegated(item)\n    )\n    .map(\n      item => ({\n        sourceText:\n          textOf(item),\n\n        normalizedText:\n          textOf(item)\n            .toLowerCase()\n            .replace(/\\s+/g, \" \")\n            .trim(),\n\n        source:\n          \"AI\"\n      })\n    );\n\n\nconst procedureConcepts =\n  aiProcedures\n    .map(\n      item => ({\n        sourceText:\n          textOf(item),\n\n        normalizedText:\n          textOf(item)\n            .toLowerCase()\n            .replace(/\\s+/g, \" \")\n            .trim(),\n\n        source:\n          \"AI\"\n      })\n    );\n\n\nreturn {\n  json: {\n    caseData: caseData,\n\n    semanticLayer: semanticLayer,\n    pogsReferences: pogsReferences,\n    pogsFormRules: pogsFormRules,\n\n    engineMeta: engineMeta,\n\n    clinicalConceptsNormalized: {\n      diagnoses:\n        diagnosisConcepts,\n\n      comorbidities:\n        comorbidityConcepts,\n\n      procedures:\n        procedureConcepts,\n\n      pregnancyTypeText:\n        caseData.clinicalConcepts\n          ?.pregnancyTypeText ??\n        null,\n\n      deliveryMannerText:\n        caseData.clinicalConcepts\n          ?.deliveryMannerText ??\n        null\n    }\n  }\n};"
+      }
+    },
+    {
+      "id": "31708adc-fdcb-4fc7-96bd-65f5011c81d4",
+      "name": "Map POGS References",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        -16
+      ],
+      "parameters": {
+        "jsCode": "const d = $json;\n\nconst concepts =\n  d.clinicalConceptsNormalized;\n\nconst mapped = {\n  gynecologicalDiagnosis: [],\n  morbidities: {},\n  gynemorbidities: {},\n  medicalHistory: {},\n  obstetricHistory: {},\n  concomitantProcedure: {},\n  obProcedure: {}\n};\n\nconst unresolved = [];\n\nconst ignored = [];\n\n\nfunction normalize(\n  value\n) {\n  return String(\n    value ?? \"\"\n  )\n    .toLowerCase()\n    .replace(/\\s+/g, \" \")\n    .trim();\n}\n\n\n/*\nCONFIRMED POGS MAPPING\n\nProlapsed/submucous myoma:\ncategory 12\ncondition 114\ngyneStage 6\n*/\n\nfor (\n  const concept of\n  concepts.diagnoses ?? []\n) {\n\n  const term =\n    normalize(\n      concept.normalizedText\n    );\n\n\n  const isSubmucousMyoma =\n    (\n      term.includes(\n        \"submucous myoma\"\n      ) ||\n      term.includes(\n        \"submucosal myoma\"\n      )\n    );\n\n\n  if (\n    isSubmucousMyoma\n  ) {\n\n    mapped\n      .gynecologicalDiagnosis\n      .push({\n        categoryId:\n          12,\n\n        conditionId:\n          114,\n\n        gyneStage:\n          6,\n\n        others:\n          null,\n\n        othersField:\n          null\n      });\n\n    continue;\n  }\n\n\n  /*\n  Terms that we recognize clinically\n  but do NOT yet have exact POGS\n  diagnosis mapping for.\n  */\n\n  if (\n    term ===\n      \"abnormal uterine bleeding\" ||\n    term.includes(\n      \"endometrial thickening\"\n    )\n  ) {\n\n    unresolved.push({\n      type:\n        \"diagnosis\",\n\n      term:\n        concept.sourceText,\n\n      reason:\n        \"Clinical concept recognized but exact POGS mapping is not confirmed\"\n    });\n\n    continue;\n  }\n\n\n  /*\n  These are not gynecologicalDiagnosis\n  entries by themselves.\n  */\n\n  if (\n    term === \"anemia\" ||\n    term.includes(\n      \"acute blood loss\"\n    ) ||\n    term.includes(\n      \"obesity\"\n    )\n  ) {\n\n    ignored.push({\n      type:\n        \"diagnosis\",\n\n      term:\n        concept.sourceText,\n\n      reason:\n        \"Not mapped as a POGS gynecologicalDiagnosis\"\n    });\n\n    continue;\n  }\n\n\n  unresolved.push({\n    type:\n      \"diagnosis\",\n\n    term:\n      concept.sourceText,\n\n    reason:\n      \"No deterministic POGS mapping exists\"\n  });\n}\n\n\nreturn {\n  json: {\n    ...d,\n\n    pogsMapping: {\n      mapped: mapped,\n      unresolved: unresolved,\n      ignored: ignored\n    }\n  }\n};"
+      }
+    },
+    {
+      "id": "01719440-47c8-4633-8d1e-b18b4c9add5d",
+      "name": "Build POGS Candidate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2688,
+        -16
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const source =\n  $json.caseData;\n\nconst mapped =\n  $json.pogsMapping\n    ?.mapped ?? {};\n\n\nfunction toISODate(\n  value\n) {\n\n  if (!value) {\n    return null;\n  }\n\n  const stringValue =\n    String(value);\n\n  // Already YYYY-MM-DD\n  if (\n    /^\\d{4}-\\d{2}-\\d{2}$/\n      .test(stringValue)\n  ) {\n    return stringValue;\n  }\n\n  // MM/DD/YYYY\n  const match =\n    stringValue.match(\n      /^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/\n    );\n\n  if (!match) {\n    return null;\n  }\n\n  return (\n    `${match[3]}-` +\n    `${match[1]}-` +\n    `${match[2]}`\n  );\n}\n\n\nconst candidate = {\n\n  runContext:\n    source.runContext ?? {\n      mode:\n        \"UNKNOWN\",\n\n      rawCaseId:\n        null\n    },\n\n\n  caseNum:\n    source.patient\n      ?.hospitalNumber ??\n    source.caseNum ??\n    null,\n\n\n  birthDate:\n    toISODate(\n      source.patient\n        ?.birthDate ??\n      source.birthDate\n    ),\n\n\n  admissionDate:\n    toISODate(\n      source.admission\n        ?.date ??\n      source.admissionDate\n    ),\n\n\n  dischargeDate:\n    toISODate(\n      source.admission\n        ?.dischargeDate ??\n      source.dischargeDate\n    ),\n\n\n  room:\n    source.room ??\n    null,\n\n\n  age:\n    source.patient\n      ?.age ??\n    source.age ??\n    null,\n\n\n  weight:\n    source.measurements\n      ?.weightKg ??\n    source.weight ??\n    null,\n\n\n  height:\n    source.measurements\n      ?.heightCm ??\n    source.height ??\n    null,\n\n\n  bmi:\n    source.bmi ??\n    (\n      (() => {\n        const weightValue =\n          source.measurements\n            ?.weightKg ??\n          source.weight ??\n          null;\n\n        const heightValue =\n          source.measurements\n            ?.heightCm ??\n          source.height ??\n          null;\n\n        if (\n          weightValue == null ||\n          heightValue == null\n        ) {\n          return null;\n        }\n\n        const heightMeters =\n          Number(heightValue) / 100;\n\n        const weightKg =\n          Number(weightValue);\n\n        if (\n          !heightMeters ||\n          !weightKg ||\n          heightMeters <= 0 ||\n          weightKg <= 0\n        ) {\n          return null;\n        }\n\n        return Number(\n          (\n            weightKg /\n            (heightMeters * heightMeters)\n          ).toFixed(2)\n        );\n      })()\n    ),\n\n\n  isPregnancy:\n    source.classification\n      ?.isPregnancy ??\n    source.isPregnancy ??\n    null,\n\n\n  isGyne:\n    source.classification\n      ?.isGyne ??\n    source.isGyne ??\n    null,\n\n\n  isPostpartum:\n    source.classification\n      ?.isPostpartum ??\n    source.isPostpartum ??\n    null,\n\n\n  isDelivered:\n    source.deliveryState\n      ?.currentPregnancyDelivered ??\n    null,\n\n\n  obscoreG:\n    source.obstetric\n      ?.gravida ??\n    source.obscoreG ??\n    null,\n\n\n  obscoreP:\n    source.obstetric\n      ?.para ??\n    source.obscoreP ??\n    null,\n\n\n  obscoreFT:\n    source.obstetric\n      ?.fullTerm ??\n    source.obscoreFT ??\n    null,\n\n\n  obscorePr:\n    source.obstetric\n      ?.preterm ??\n    source.obscorePr ??\n    null,\n\n\n  obscoreAb:\n    source.obstetric\n      ?.abortion ??\n    source.obscoreAb ??\n    null,\n\n\n  obscoreLB:\n    source.obstetric\n      ?.living ??\n    source.obscoreLB ??\n    null,\n\n\n  admissionAOGType:\n    source.admissionAOGType ??\n    null,\n\n\n  admissionAOG:\n    source.admissionAOG ??\n    null,\n\n\n  admissionWeeks:\n    source.admissionWeeks ??\n    null,\n\n\n  admissionDays:\n    source.admissionDays ??\n    null,\n\n\n  pregnancyType:\n    source.pregnancyType ??\n    null,\n\n\n  isHeterotopic:\n    source.isHeterotopic ??\n    null,\n\n\n  abortionType:\n    source.abortionType ??\n    null,\n\n\n  ectopicType:\n    source.ectopicType ??\n    null,\n\n\n  molarType:\n    source.molarType ??\n    null,\n\n\n  institutionalDelivery:\n    source.institutionalDelivery ??\n    null,\n\n\n  infantsNumber:\n    source.infantsNumber ??\n    null,\n\n\n  deliveryDate:\n    toISODate(\n      source.deliveryDate\n    ),\n\n\n  deliveryAOGType:\n    source.deliveryAOGType ??\n    null,\n\n\n  deliveryAOG:\n    source.deliveryAOG ??\n    null,\n\n\n  deliveryWeeks:\n    source.deliveryWeeks ??\n    null,\n\n\n  deliveryDays:\n    source.deliveryDays ??\n    null,\n\n\n  deliveryManner:\n    source.deliveryManner ??\n    null,\n\n\n  primaryRepeat:\n    source.primaryRepeat ??\n    null,\n\n\n  incision:\n    source.incision ??\n    null,\n\n\n  CSBilateralSalpingectomy:\n    source.CSBilateralSalpingectomy ??\n    null,\n\n\n  CSBTL:\n    source.CSBTL ??\n    null,\n\n\n  deliveryIndication:\n    source.deliveryIndication ??\n    {},\n\n\n  morbidities:\n    mapped.morbidities ??\n    {},\n\n\n  neonatal:\n    source.neonatal ??\n    [],\n\n\n  complicatedPregnancy:\n    source.complicatedPregnancy ??\n    null,\n\n\n  isInduced:\n    source.isInduced ??\n    null,\n\n\n  inducedIndication:\n    source.inducedIndication ??\n    null,\n\n\n  inducedMethod:\n    source.inducedMethod ??\n    null,\n\n\n  inducedComplication:\n    source.inducedComplication ??\n    null,\n\n\n  returnToOR:\n    source.returnToOR ??\n    null,\n\n\n  pcosHistory:\n    source.pcosHistory ??\n    null,\n\n\n  pcosSymptoms:\n    source.pcosSymptoms ??\n    null,\n\n\n  gynecologicalDiagnosis:\n    mapped\n      .gynecologicalDiagnosis ??\n    [],\n\n\n  gynemorbidities:\n    mapped.gynemorbidities ??\n    {},\n\n\n  medicalHistory:\n    mapped.medicalHistory ??\n    {},\n\n\n  obstetricHistory:\n    mapped.obstetricHistory ??\n    {},\n\n\n  concomitantProcedure:\n    mapped\n      .concomitantProcedure ??\n    {},\n\n\n  obProcedure:\n    mapped.obProcedure ??\n    {},\n\n\n  motherCondition:\n    source.motherCondition ??\n    null,\n\n\n  antecedentType:\n    source.antecedentType ??\n    null,\n\n\n  antecedentCause:\n    source.antecedentCause ??\n    null,\n\n\n  deathTiming:\n    source.deathTiming ??\n    null,\n\n\n  deathReviewed:\n    source.deathReviewed ??\n    null\n};\n\n\nreturn {\n  json: {\n    ...$json,\n\n    candidate\n  }\n};"
+      }
+    },
+    {
+      "id": "35001c6a-6f7b-44f2-a6c3-afad8cd930b2",
+      "name": "Apply POGS Form Rules",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2912,
+        -16
+      ],
+      "parameters": {
+        "jsCode": "const candidate =\n  $json.candidate;\n\nconst artifact =\n  $json.pogsFormRules;\n\nconst fields =\n  artifact?.fields ?? {};\n\n\nfunction valuePresent(\n  value,\n  constraints = {}\n) {\n\n  if (\n    value === null ||\n    value === undefined\n  ) {\n    return false;\n  }\n\n  if (\n    typeof value === \"string\"\n  ) {\n    return (\n      value.trim().length > 0\n    );\n  }\n\n  if (\n    Array.isArray(value)\n  ) {\n\n    const minimum =\n      constraints.minItems ??\n      constraints.minLength ??\n      0;\n\n    return (\n      value.length >= minimum\n    );\n  }\n\n  if (\n    typeof value === \"object\"\n  ) {\n\n    const minimum =\n      constraints.minItems ??\n      constraints.minLength ??\n      0;\n\n    if (minimum > 0) {\n      return (\n        Object.keys(value)\n          .length >= minimum\n      );\n    }\n\n    return true;\n  }\n\n  // false and 0 are valid entered values.\n  return true;\n}\n\n\nfunction evaluate(\n  rule\n) {\n\n  if (!rule) {\n    return true;\n  }\n\n\n  if (\n    Array.isArray(rule.all)\n  ) {\n\n    return rule.all.every(\n      evaluate\n    );\n  }\n\n\n  if (\n    Array.isArray(rule.any)\n  ) {\n\n    return rule.any.some(\n      evaluate\n    );\n  }\n\n\n  if (rule.eq) {\n\n    const [\n      field,\n      expected\n    ] =\n      Object.entries(\n        rule.eq\n      )[0];\n\n    return (\n      candidate[field] ===\n      expected\n    );\n  }\n\n\n  if (rule.neq) {\n\n    const [\n      field,\n      expected\n    ] =\n      Object.entries(\n        rule.neq\n      )[0];\n\n    return (\n      candidate[field] !==\n      expected\n    );\n  }\n\n\n  if (rule.in) {\n\n    const [\n      field,\n      accepted\n    ] =\n      Object.entries(\n        rule.in\n      )[0];\n\n    return (\n      Array.isArray(accepted) &&\n      accepted.includes(\n        candidate[field]\n      )\n    );\n  }\n\n\n  if (rule.notIn) {\n\n    const [\n      field,\n      rejected\n    ] =\n      Object.entries(\n        rule.notIn\n      )[0];\n\n    return (\n      Array.isArray(rejected) &&\n      !rejected.includes(\n        candidate[field]\n      )\n    );\n  }\n\n\n  if (rule.isNull) {\n\n    return (\n      candidate[\n        rule.isNull\n      ] == null\n    );\n  }\n\n\n  if (rule.notNull) {\n\n    return (\n      candidate[\n        rule.notNull\n      ] != null\n    );\n  }\n\n\n  if (rule.truthy) {\n\n    return Boolean(\n      candidate[\n        rule.truthy\n      ]\n    );\n  }\n\n\n  if (rule.falsy) {\n\n    return !Boolean(\n      candidate[\n        rule.falsy\n      ]\n    );\n  }\n\n\n  /*\n  Unknown rule format.\n  Do NOT silently return true.\n  */\n\n  return null;\n}\n\n\nconst fieldStates = {};\n\nconst unknownRules = [];\n\n\nfor (\n  const [\n    fieldName,\n    definition\n  ] of Object.entries(\n    fields\n  )\n) {\n\n  let applicable =\n    true;\n\n\n  if (\n    definition.applicableWhen\n  ) {\n\n    const result =\n      evaluate(\n        definition\n          .applicableWhen\n      );\n\n    if (result === null) {\n\n      applicable =\n        null;\n\n      unknownRules.push({\n        field:\n          fieldName,\n\n        type:\n          \"applicableWhen\",\n\n        rule:\n          definition\n            .applicableWhen\n      });\n\n    } else {\n\n      applicable =\n        result;\n    }\n  }\n\n\n  let required =\n    definition\n      .closeCaseRequired ===\n    true;\n\n\n  if (\n    definition.requiredWhen\n  ) {\n\n    const result =\n      evaluate(\n        definition\n          .requiredWhen\n      );\n\n    if (result === null) {\n\n      required =\n        null;\n\n      unknownRules.push({\n        field:\n          fieldName,\n\n        type:\n          \"requiredWhen\",\n\n        rule:\n          definition\n            .requiredWhen\n      });\n\n    } else {\n\n      required =\n        result;\n    }\n  }\n\n\n  const value =\n    candidate[\n      fieldName\n    ];\n\n\n  const satisfied =\n    required === true\n      ? valuePresent(\n          value,\n          definition\n        )\n      : true;\n\n\n  fieldStates[\n    fieldName\n  ] = {\n\n    applicable,\n\n    required,\n\n    satisfied,\n\n    value:\n      value ?? null,\n\n    controlType:\n      definition\n        .controlType ??\n      null\n  };\n}\n\n\nconst missingRequiredFields =\n  Object.entries(\n    fieldStates\n  )\n    .filter(\n      ([, state]) =>\n        state.applicable === true &&\n        state.required === true &&\n        state.satisfied !== true\n    )\n    .map(\n      ([field]) =>\n        field\n    );\n\n\nreturn {\n  json: {\n    ...$json,\n\n    candidate: {\n      ...candidate,\n\n      formEvaluation: {\n        mode:\n          $json.engineMeta\n            ?.formRulesMode ??\n          \"ENFORCED\",\n\n        fieldStates: fieldStates,\n\n        missingRequiredFields: missingRequiredFields,\n\n        unknownRules: unknownRules\n      }\n    }\n  }\n};"
+      }
+    },
+    {
+      "id": "ea61ce8d-987b-4b98-acf1-b62bd3f5d37f",
+      "name": "Validate POGS Candidate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3136,
+        -16
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const c =\n  $json.candidate;\n\nconst issues = [];\nconst warnings = [];\n\n\n/*\nCore identity requirements\n*/\n\nif (!c.caseNum) {\n  issues.push(\n    \"Missing caseNum\"\n  );\n}\n\nif (!c.birthDate) {\n  issues.push(\n    \"Missing birthDate\"\n  );\n}\n\nif (!c.admissionDate) {\n  issues.push(\n    \"Missing admissionDate\"\n  );\n}\n\n\n/*\nCase classification\n*/\n\nif (\n  c.isPregnancy === null ||\n  c.isPregnancy === undefined\n) {\n  issues.push(\n    \"isPregnancy not classified\"\n  );\n}\n\nif (\n  c.isGyne === null ||\n  c.isGyne === undefined\n) {\n  issues.push(\n    \"isGyne not classified\"\n  );\n}\n\n\n/*\nDelivery-state safety\n*/\n\nif (\n  c.isPregnancy === true &&\n  (\n    c.isDelivered === null ||\n    c.isDelivered === undefined\n  )\n) {\n\n  issues.push(\n    \"Current pregnancy delivery status not established\"\n  );\n}\n\n\n/*\nGyne mapping\n*/\n\nif (\n  c.isGyne === true &&\n  (\n    !Array.isArray(\n      c.gynecologicalDiagnosis\n    ) ||\n    c.gynecologicalDiagnosis\n      .length === 0\n  )\n) {\n\n  issues.push(\n    \"Gyne case has no confirmed POGS gynecologicalDiagnosis mapping\"\n  );\n}\n\n\n/*\nUnresolved mappings\n*/\n\nfor (\n  const unresolved of\n  $json.pogsMapping\n    ?.unresolved ?? []\n) {\n\n  warnings.push(\n    `Unresolved clinical mapping: ${\n      unresolved.term ??\n      \"unknown\"\n    }`\n  );\n}\n\n\n/*\nForm evaluation\n\nWhen formRulesMode is REPORT_ONLY,\nmissing required POGS fields and\nunknown rules become warnings.\n*/\n\nconst form =\n  c.formEvaluation ?? {};\n\nfor (\n  const field of\n  form.missingRequiredFields ??\n  []\n) {\n\n  const message =\n    \"POGS form rule requires: \" +\n    field;\n\n  if (\n    (form.mode ?? \"REPORT_ONLY\") ===\n    \"ENFORCED\"\n  ) {\n    issues.push(message);\n  } else {\n    warnings.push(message);\n  }\n}\n\n\nfor (\n  const rule of\n  form.unknownRules ??\n  []\n) {\n\n  const message =\n    \"POGS form rule could not be evaluated: \" +\n    rule.field;\n\n  if (\n    (form.mode ?? \"REPORT_ONLY\") ===\n    \"ENFORCED\"\n  ) {\n    issues.push(message);\n  } else {\n    warnings.push(message);\n  }\n}\n\n\n/*\nReference sanity for confirmed\ngynecologicalDiagnosis structures.\n*/\n\nfor (\n  const diagnosis of\n  c.gynecologicalDiagnosis ??\n  []\n) {\n\n  if (\n    !Number.isInteger(\n      diagnosis.categoryId\n    ) ||\n    !Number.isInteger(\n      diagnosis.conditionId\n    )\n  ) {\n\n    issues.push(\n      \"Invalid gynecologicalDiagnosis reference structure\"\n    );\n  }\n}\n\n\n/*\nFinal state\n*/\n\nconst readyForPOGS =\n  issues.length === 0;\n\n\nreturn {\n  json: {\n    ...c,\n\n    unresolvedMappings:\n      $json.pogsMapping\n        ?.unresolved ??\n      [],\n\n    ignoredMappings:\n      $json.pogsMapping\n        ?.ignored ??\n      [],\n\n    validation: {\n\n      readyForPOGS: readyForPOGS,\n\n      needsReview:\n        !readyForPOGS,\n\n      issues: issues,\n\n      warnings: warnings,\n\n      formRulesMode:\n        form.mode ??\n        \"REPORT_ONLY\"\n    }\n  }\n};"
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Load Semantic Layer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Semantic Layer": {
+      "main": [
+        [
+          {
+            "node": "Read Semantic Layer File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Semantic Layer File": {
+      "main": [
+        [
+          {
+            "node": "Parse Semantic Layer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Semantic Layer": {
+      "main": [
+        [
+          {
+            "node": "Load POGS Reference Values",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load POGS Reference Values": {
+      "main": [
+        [
+          {
+            "node": "Read POGS Reference Values",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read POGS Reference Values": {
+      "main": [
+        [
+          {
+            "node": "Parse POGS Reference Values",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse POGS Reference Values": {
+      "main": [
+        [
+          {
+            "node": "Load POGS Form Rules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load POGS Form Rules": {
+      "main": [
+        [
+          {
+            "node": "Read POGS Form Rules File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read POGS Form Rules File": {
+      "main": [
+        [
+          {
+            "node": "Parse POGS Form Ruels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse POGS Form Ruels": {
+      "main": [
+        [
+          {
+            "node": "Apply Semantic Mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Semantic Mapping": {
+      "main": [
+        [
+          {
+            "node": "Map POGS References",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map POGS References": {
+      "main": [
+        [
+          {
+            "node": "Build POGS Candidate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build POGS Candidate": {
+      "main": [
+        [
+          {
+            "node": "Apply POGS Form Rules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply POGS Form Rules": {
+      "main": [
+        [
+          {
+            "node": "Validate POGS Candidate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": [],
+  "projectId": "wQUaNsZxjvOIjRQM",
+  "isArchived": false
+}

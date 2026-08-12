@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.2.0",
+  "schemaVersion": "1.3.0",
   "artifactType": "clinical-automation-semantic-layer",
   "status": "ACTIVE_DRAFT",
   "createdAt": "2026-08-09T17:20:00Z",
@@ -135,6 +135,13 @@
         "normalizedParserFormat": "MM/DD/YYYY",
         "pogsCandidateFormat": "YYYY-MM-DD",
         "status": "CONFIRMED"
+      },
+      "derivedClinicalState": {
+        "currentPregnancyDelivered": {
+          "type": "boolean|null",
+          "meaning": "Whether the CURRENT pregnancy has already resulted in delivery. This must not be inferred from parity alone.",
+          "derivationStatus": "REQUIRES_EXPLICIT_CURRENT_DELIVERY_EVIDENCE"
+        }
       }
     },
     "POGSCandidate": {
@@ -160,7 +167,8 @@
         "ignoredDiagnosisTerms",
         "classificationEvidence",
         "source",
-        "runContext"
+        "runContext",
+        "currentPregnancyDelivered"
       ]
     },
     "KnowledgeRecord": {
@@ -266,6 +274,10 @@
         "status": "CONFIRMED_BEHAVIOR",
         "meaning": "A case may simultaneously satisfy current-pregnancy and gynecologic classification rules. Do not force the flags to be mutually exclusive.",
         "readinessPolicy": "If isPregnancy is true, the pregnancy-specific blocking rule remains sufficient to keep readyForPOGS false until pregnancy validation is implemented. Gyne extraction and mapping may still be evaluated and recorded."
+      },
+      "postpartumMeaning": {
+        "rule": "isPostpartum must be based on evidence that the CURRENT pregnancy has delivered / patient is postpartum. Historical parity alone is insufficient.",
+        "relationship": "When currentPregnancyDelivered === true, postpartum/delivered routing may apply; the exact isPostpartum derivation remains dependent on confirmed source wording/fields."
       }
     }
   },
@@ -413,6 +425,20 @@
       "whenPresent": {
         "mustBeInteger": true,
         "minimum": 0
+      },
+      "semantics": {
+        "obscoreP": "Parity: number of pregnancies that reached at least 20 weeks and 0 days, regardless of fetal outcome. It is obstetric history and is NOT a current-delivery indicator.",
+        "obscoreAb": "Pregnancy losses before the parity threshold belong to abortion history and do not increase parity.",
+        "currentDeliveryInference": {
+          "mustNotInferFrom": [
+            "obscoreP",
+            "obscoreFT",
+            "obscorePr",
+            "obscoreAb",
+            "obscoreLB"
+          ],
+          "rule": "Historical obstetric score values alone cannot establish whether the current pregnancy has delivered."
+        }
       }
     },
     "measurements": {
@@ -434,18 +460,55 @@
       "unresolvedDiagnosisTermsDisposition": "WARNING"
     },
     "pregnancy": {
-      "status": "DEFERRED",
-      "separateWorkflowRequired": true,
-      "temporaryBlockingRule": {
-        "if": "isPregnancy === true",
-        "issue": "Pregnancy-specific POGS validation pending",
-        "readyForPOGS": false
+      "status": "ACTIVE_ROUTING_RULE",
+      "sourceOfClinicalInformation": {
+        "notDelivered": "CAPDS / attached Google Docs case source",
+        "delivered": "CAPDS plus separate delivered/postpartum information source"
       },
-      "meaning": "Pregnancy cases may parse successfully but must remain blocked until the separate pregnancy-specific rules are implemented and explicitly validated."
+      "currentDeliveryState": {
+        "field": "currentPregnancyDelivered",
+        "allowedValues": [
+          true,
+          false,
+          null
+        ],
+        "derivationRule": "Use explicit evidence referring to delivery of the CURRENT pregnancy. Do not infer current delivery from PARA/parity alone.",
+        "examplesOfCandidateEvidenceToInvestigate": [
+          "explicit delivery date/time",
+          "manner of delivery",
+          "explicit delivered/postpartum/puerperium statement",
+          "other deterministic current-delivery fields confirmed from CAPDS"
+        ]
+      },
+      "routing": {
+        "ifPregnantAndNotDelivered": {
+          "if": "isPregnancy === true && currentPregnancyDelivered === false",
+          "route": "CAPDS_PREGNANCY_PROCESSING",
+          "blockingBecausePregnant": false,
+          "readyForPOGSRule": "Pregnancy status alone must not block readiness. Candidate may become ready when all other applicable validation rules pass."
+        },
+        "ifPregnantAndDelivered": {
+          "if": "isPregnancy === true && currentPregnancyDelivered === true",
+          "route": "DELIVERED_POSTPARTUM_INFORMATION",
+          "blockingUntilAdditionalSourceLoaded": true,
+          "issue": "Current pregnancy delivered; additional delivered/postpartum information source required"
+        },
+        "ifPregnantAndDeliveryStateUnknown": {
+          "if": "isPregnancy === true && currentPregnancyDelivered === null",
+          "route": "DELIVERY_STATE_REVIEW",
+          "blocking": true,
+          "issue": "Current pregnancy delivery status not established"
+        }
+      },
+      "supersedes": {
+        "rule": "All pregnancy cases are blocked with 'Pregnancy-specific POGS validation pending'",
+        "status": "REJECTED",
+        "reason": "CAPDS contains the required pregnancy information while the current pregnancy has not delivered. A separate source is required only after current delivery."
+      }
     },
     "readyForPOGS": {
-      "definition": "True only when there are zero blocking validation issues.",
-      "regressionOverride": "Even if validation is ready, REGRESSION mode must not enter the live POGS write branch."
+      "definition": "True only when there are zero blocking validation issues. Pregnancy status alone is not blocking. For pregnancy cases, currentPregnancyDelivered must be explicitly false to continue on the CAPDS path; true requires the delivered/postpartum source, and null remains blocked pending delivery-state determination.",
+      "regressionOverride": "REGRESSION mode must never enter the live POGS write branch."
     }
   },
   "pogsIntegration": {
@@ -623,15 +686,21 @@
         "UNKNOWN": 0
       },
       "baselineInterpretation": "This run expands evidence to 29 cases. NEW cases dominate because many records had no prior knowledge baseline. CHANGED/REGRESSED cases must be interpreted only after execution and lookup metadata are excluded from comparison."
+    },
+    "semanticPolicyUpdate": {
+      "version": "1.3.0",
+      "status": "CONFIRMED_BY_USER_WORKFLOW_RULE_WITH_EXTERNAL_PARITY_DEFINITION_SUPPORT",
+      "changes": [
+        "Removed blanket blocking of all pregnancy cases.",
+        "CAPDS remains the pregnancy source while the current pregnancy has not delivered.",
+        "A separate delivered/postpartum source is required after current delivery.",
+        "Parity is historical obstetric information and must not be used alone to determine current delivery.",
+        "Current pregnancy delivery status becomes an explicit derived state."
+      ],
+      "regressionNote": "The existing regression bundle predates this policy. A future regression run is required after parser/validator changes before this behavior can be treated as implementation-confirmed."
     }
   },
   "knownGaps": [
-    {
-      "area": "pregnancy-specific POGS requirements",
-      "status": "DEFERRED",
-      "impact": "Pregnancy candidates remain not-ready until separate pregnancy-specific validation is implemented.",
-      "latestEvidence": "27 of 29 current cases are classified pregnancy and are blocked by the pending pregnancy rule."
-    },
     {
       "area": "Abnormal uterine bleeding mapping",
       "status": "UNRESOLVED"
@@ -674,6 +743,17 @@
       "area": "height extraction coverage",
       "status": "MONITOR",
       "impact": "One of 29 cases lacks extracted height. Height remains non-blocking and produces a warning."
+    },
+    {
+      "area": "current pregnancy delivery-state extraction",
+      "status": "IMPLEMENTATION_REQUIRED",
+      "impact": "Pregnancy routing now depends on explicit currentPregnancyDelivered state. The parser/classifier must establish this from current-pregnancy delivery evidence, not parity.",
+      "nextStep": "Review CAPDS source patterns for explicit delivery date, manner of delivery, postpartum/puerperium wording, or another deterministic delivery marker."
+    },
+    {
+      "area": "delivered/postpartum additional source integration",
+      "status": "DEFERRED_UNTIL_SOURCE_DEFINED",
+      "impact": "Cases with currentPregnancyDelivered=true must not be treated as complete from CAPDS alone; the separate delivered/postpartum source must be linked and parsed."
     }
   ],
   "sourcePriority": [
@@ -713,5 +793,12 @@
       "Regression evidence showing expected behavior",
       "No conflicting confirmed rule"
     ]
+  },
+  "clinicalDefinitionNotes": {
+    "parityThreshold": {
+      "definition": "Parity counts pregnancies reaching at least 20 weeks and 0 days, regardless of fetal outcome.",
+      "source": "ACOG reVITALize Obstetrics Data Definitions",
+      "applicationToAutomation": "This supports treating obscoreP as historical obstetric history and not as evidence that the current pregnancy has delivered."
+    }
   }
 }

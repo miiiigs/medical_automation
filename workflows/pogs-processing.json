@@ -1,0 +1,396 @@
+{
+  "id": "muoM56eF7sszgYmW",
+  "name": "pogs-processing",
+  "active": false,
+  "nodes": [
+    {
+      "id": "c8038310-0a07-44e7-8344-f9afbe326c96",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -144,
+        -128
+      ],
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"caseNum\": \"N8N-TEST-001\",\n  \"birthDate\": \"1990-01-01\",\n  \"admissionDate\": \"2026-08-09\",\n  \"room\": \"301\",\n  \"weight\": 65,\n  \"height\": 160,\n  \"isPregnancy\": true,\n  \"isGyne\": false,\n  \"isPostpartum\": false,\n  \"obscoreG\": 2,\n  \"obscoreP\": 1,\n  \"obscoreFT\": 1,\n  \"obscorePr\": 0,\n  \"obscoreAb\": 0,\n  \"obscoreLB\": 1,\n  \"runContext\": {\n    \"mode\": \"LIVE\",\n    \"rawCaseId\": \"RAW-DOC-example\"\n  },\n  \"validation\": {\n    \"readyForPOGS\": true\n  }\n}"
+      }
+    },
+    {
+      "id": "aa8c714e-8bb6-452e-93a0-d28253d425cb",
+      "name": "Validate POGS Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -128
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const d = $json;\n\nif (!d.caseNum) {\n  throw new Error(\"pogs-processing: caseNum is required\");\n}\n\nif (!d.birthDate) {\n  throw new Error(\"pogs-processing: birthDate is required\");\n}\n\nif (!d.admissionDate) {\n  throw new Error(\"pogs-processing: admissionDate is required\");\n}\n\nif (\n  d.runContext?.mode !== \"LIVE\"\n) {\n  throw new Error(\n    \"pogs-processing: live write blocked because runContext.mode is not LIVE\"\n  );\n}\n\nif (\n  d.validation?.readyForPOGS !== true\n) {\n  throw new Error(\n    \"pogs-processing: live write blocked because validation.readyForPOGS is not true\"\n  );\n}\n\nreturn {\n  json: {\n    ...d,\n    runContext: {\n      ...(d.runContext ?? {}),\n      mode: d.runContext?.mode ?? \"LIVE\"\n    }\n  }\n};"
+      }
+    },
+    {
+      "id": "856374cb-26fa-42e3-a110-5f1e77dcfd66",
+      "name": "Ping",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        304,
+        -128
+      ],
+      "parameters": {
+        "url": "={{ ($env.POGS_BASE_URL || \"http://host.docker.internal:3000\") + \"/ping\" }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "08506814-70f1-472e-9d0c-4da0bd53da76",
+      "name": "Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        528,
+        -128
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.POGS_BASE_URL || \"http://host.docker.internal:3000\") + \"/api/accounts/login\" }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { username: $env.POGS_USERNAME, password: $env.POGS_PASSWORD } }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "f9aea869-861b-42f1-88b3-f0cc3802289a",
+      "name": "Create Patient Case Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1424,
+        -32
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.POGS_BASE_URL || \"http://host.docker.internal:3000\") + \"/api/patientcases\" }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $node[\"Login\"].json[\"token\"] }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { caseNum: $node[\"Validate POGS Input\"].json.caseNum, birthDate: $node[\"Validate POGS Input\"].json.birthDate } }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "c385f52d-0ad2-438a-8049-5fd686fcd386",
+      "name": "Create Case",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1648,
+        -32
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.POGS_BASE_URL || \"http://host.docker.internal:3000\") + \"/api/patients/\" + $node[\"Create Patient Case Record\"].json[\"_id\"] + \"/cases\" }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $node[\"Login\"].json[\"token\"] }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { caseNum: $node[\"Validate POGS Input\"].json.caseNum, admissionDate: $node[\"Validate POGS Input\"].json.admissionDate, room: $node[\"Validate POGS Input\"].json.room ?? null, weight: $node[\"Validate POGS Input\"].json.weight ?? null, height: $node[\"Validate POGS Input\"].json.height ?? null, age: $node[\"Validate POGS Input\"].json.age ?? null, bmi: $node[\"Validate POGS Input\"].json.bmi ?? null, isPregnancy: $node[\"Validate POGS Input\"].json.isPregnancy ?? null, isGyne: $node[\"Validate POGS Input\"].json.isGyne ?? null, isPostpartum: $node[\"Validate POGS Input\"].json.isPostpartum ?? null, isDelivered: $node[\"Validate POGS Input\"].json.isDelivered ?? null, obscoreG: $node[\"Validate POGS Input\"].json.obscoreG ?? null, obscoreP: $node[\"Validate POGS Input\"].json.obscoreP ?? null, obscoreFT: $node[\"Validate POGS Input\"].json.obscoreFT ?? null, obscorePr: $node[\"Validate POGS Input\"].json.obscorePr ?? null, obscoreAb: $node[\"Validate POGS Input\"].json.obscoreAb ?? null, obscoreLB: $node[\"Validate POGS Input\"].json.obscoreLB ?? null, gynecologicalDiagnosis: $node[\"Validate POGS Input\"].json.gynecologicalDiagnosis ?? [], medicalHistory: $node[\"Validate POGS Input\"].json.medicalHistory ?? {}, obstetricHistory: $node[\"Validate POGS Input\"].json.obstetricHistory ?? {}, morbidities: $node[\"Validate POGS Input\"].json.morbidities ?? {}, gynemorbidities: $node[\"Validate POGS Input\"].json.gynemorbidities ?? {}, concomitantProcedure: $node[\"Validate POGS Input\"].json.concomitantProcedure ?? {}, obProcedure: $node[\"Validate POGS Input\"].json.obProcedure ?? {}, neonatal: $node[\"Validate POGS Input\"].json.neonatal ?? [], motherCondition: $node[\"Validate POGS Input\"].json.motherCondition ?? null, dischargeDate: $node[\"Validate POGS Input\"].json.dischargeDate ?? null } }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "0b403f01-c5ac-47e2-a385-43909d6e8d26",
+      "name": "Check Existing Case",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        752,
+        -128
+      ],
+      "parameters": {
+        "url": "={{ ($env.POGS_BASE_URL || \"http://host.docker.internal:3000\") + \"/api/patientcases\" }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $node[\"Validate POGS Input\"].json[\"caseNum\"] }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $node[\"Login\"].json[\"token\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "b7f4a86f-271d-4487-8e5b-6df775b43f59",
+      "name": "Case Already Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1200,
+        -128
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "54c7c21f-7daf-463f-8e6f-b383647a327c",
+              "leftValue": "={{ $json.exists === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "8edb9174-0d97-4e50-9208-93eb2442ce56",
+      "name": "Normalize Case Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        -128
+      ],
+      "parameters": {
+        "jsCode": "const requestedCaseNum = $node[\"Validate POGS Input\"].json.caseNum;\n\nconst matches = $items(\"Check Existing Case\")\n  .map(item => item.json)\n  .filter(row => row.caseNum === requestedCaseNum);\n\nreturn [\n  {\n    json: {\n      caseNum: requestedCaseNum,\n      exists: matches.length > 0,\n      matchCount: matches.length,\n      matches\n    }\n  }\n];"
+      }
+    },
+    {
+      "id": "bb0d43f8-3be1-4f60-9740-73717ac15312",
+      "name": "Duplicate Case - STOP",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1424,
+        -224
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { status: \"skipped\", reason: \"case_number_already_exists\", caseNum: $node[\"Validate POGS Input\"].json[\"caseNum\"], rawCaseId: $node[\"Validate POGS Input\"].json.runContext?.rawCaseId ?? null, runMode: $node[\"Validate POGS Input\"].json.runContext?.mode ?? \"LIVE\" } }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "1359e5ca-7826-4901-bfae-634e5ac551ad",
+      "name": "Verify Created Case",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1872,
+        -32
+      ],
+      "parameters": {
+        "url": "={{ ($env.POGS_BASE_URL || \"http://host.docker.internal:3000\") + \"/api/patients/\" + $node[\"Create Patient Case Record\"].json[\"_id\"] + \"/cases/\" + $node[\"Create Case\"].json[\"_id\"] }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $node[\"Login\"].json[\"token\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "9a0dca4f-4e34-402c-a7b6-8d406ccb14eb",
+      "name": "Normalize Created Case",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2096,
+        -32
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  json: {\n    status: \"created\",\n    caseNum:\n      $node[\"Validate POGS Input\"].json.caseNum,\n    rawCaseId:\n      $node[\"Validate POGS Input\"].json.runContext?.rawCaseId ??\n      null,\n    runMode:\n      $node[\"Validate POGS Input\"].json.runContext?.mode ??\n      \"LIVE\",\n    patientCaseId:\n      $node[\"Create Patient Case Record\"].json[\"_id\"] ??\n      null,\n    caseId:\n      $node[\"Create Case\"].json[\"_id\"] ??\n      null,\n    verification:\n      $json\n  }\n};"
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Validate POGS Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate POGS Input": {
+      "main": [
+        [
+          {
+            "node": "Ping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ping": {
+      "main": [
+        [
+          {
+            "node": "Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login": {
+      "main": [
+        [
+          {
+            "node": "Check Existing Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Patient Case Record": {
+      "main": [
+        [
+          {
+            "node": "Create Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing Case": {
+      "main": [
+        [
+          {
+            "node": "Normalize Case Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Case Already Exists?": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Case - STOP",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Patient Case Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Case Check": {
+      "main": [
+        [
+          {
+            "node": "Case Already Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Case": {
+      "main": [
+        [
+          {
+            "node": "Verify Created Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Created Case": {
+      "main": [
+        [
+          {
+            "node": "Normalize Created Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": [],
+  "isArchived": false
+}

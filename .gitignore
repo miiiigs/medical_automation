@@ -17,8 +17,8 @@ secrets/
 !/data/raw_cases/gaps/.gitkeep
 !/data/raw_cases/new/.gitkeep
 
-/knowledge/**
-!/knowledge/.gitkeep
+/knowledge/cases/**
+!/knowledge/cases/.gitkeep
 
 /logs/**
 !/logs/regression_runs/
